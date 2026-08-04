@@ -138,4 +138,24 @@
 
     </LinearLayout>
 
+    <!--
+      The row's actions used to be reachable only by long-pressing it. That is an
+      awkward gesture with a pointer you have to hold steady - a headset controller's
+      raycast, a mouse - and it is invisible to anyone who does not already know it is
+      there. The button does the same thing with one click; long press still works.
+
+      48dp is the smallest target that stays comfortable when it is aimed at rather
+      than touched.
+    -->
+    <ImageButton
+        android:id="@+id/view_bittorrent_search_result_list_item_menu"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center_vertical"
+        android:background="@drawable/listview_item_press_background_selector"
+        android:contentDescription="@string/list_item_menu"
+        android:focusable="true"
+        android:scaleType="center"
+        android:src="@drawable/ic_more_vert_black_24dp" />
+
 </LinearLayout>

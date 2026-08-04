@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Sizing for large screens.
+
+  This bucket is what a headset panel lands in - a Quest runs 2D apps in a floating
+  window whose smallest side is well past 600dp - along with tablets, Android TV and
+  desktop-sized windows. All of them share the same problem: the content is not held
+  at arm's length, it is looked at from across a room or a couple of virtual metres,
+  and phone-sized type is uncomfortable there.
+
+  Text is scaled about 1.25x rather than redesigned. The layouts are all weights and
+  wrap_content, so they absorb it; the point is legibility at distance, not a
+  different design.
+
+  Nothing here applies to a phone - values/dimens.xml is untouched.
+-->
+<resources>
+
+    <dimen name="title_text">25sp</dimen>
+    <dimen name="subtitle_text">20sp</dimen>
+    <dimen name="body_text">17sp</dimen>
+
+    <dimen name="text_micro_dense">13.0sp</dimen>
+    <dimen name="text_x_small_dense">16.0sp</dimen>
+
+    <dimen name="text_micro">14.0sp</dimen>
+    <dimen name="text_x_small">15.0sp</dimen>
+    <dimen name="text_small">17.0sp</dimen>
+    <dimen name="text_x_medium">18.0sp</dimen>
+    <dimen name="text_medium">20.0sp</dimen>
+    <dimen name="text_large">22.0sp</dimen>
+    <dimen name="text_x_large">25.0sp</dimen>
+
+    <dimen name="text_size_micro">15.0sp</dimen>
+    <dimen name="text_size_large">22.0sp</dimen>
+
+    <!-- the drawer is a fixed width, and 250dp on a 1000dp-wide panel is a sliver -->
+    <dimen name="mainmenu_width">320dp</dimen>
+
+    <!-- the log is monospace and dense; it needs the least scaling of anything here -->
+    <dimen name="logs_text">13sp</dimen>
+
+</resources>

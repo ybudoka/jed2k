@@ -447,6 +447,25 @@ public abstract class AbstractListAdapter<T> extends BaseAdapter implements Filt
         return null;
     }
 
+    /**
+     * Opens the per-item menu for a view carrying the item as its tag.
+     * <p>
+     * Long press is the historical way in, which is an awkward gesture with a pointer
+     * that has to be held steady and invisible to anyone who has not been told about
+     * it. Rows can call this from an explicit button instead.
+     *
+     * @return true when a menu was shown
+     */
+    protected boolean showItemMenu(View view) {
+        MenuAdapter adapter = getMenuAdapter(view);
+        if (adapter == null) {
+            return false;
+        }
+
+        trackDialog(new MenuBuilder(adapter).show());
+        return true;
+    }
+
     protected Dialog trackDialog(Dialog dialog) {
         dialogs.add(dialog);
         return dialog;

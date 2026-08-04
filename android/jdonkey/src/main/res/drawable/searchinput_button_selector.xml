@@ -18,10 +18,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 -->
+<!--
+  Hovered states are listed alongside the pressed/focused ones so a pointer that is
+  aimed at something says so before it is clicked. Phones have no hover, so these
+  items simply never match there; a headset controller's raycast, a mouse and a
+  stylus all produce hover, and without them the app gave no feedback at all until
+  the trigger was already pulled.
+-->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item android:drawable="@color/app_dark_blue_highlight" android:state_checked="true" android:state_window_focused="false"/>
     <item android:drawable="@android:color/transparent" android:state_checked="false" android:state_window_focused="false"/>
+    <item android:drawable="@color/app_dark_blue_highlight" android:state_hovered="true"/>
     <item android:drawable="@color/app_dark_blue_highlight" android:state_checked="true" android:state_pressed="true"/>
     <item android:drawable="@color/app_dark_blue_highlight" android:state_checked="false" android:state_pressed="true"/>
     <item android:drawable="@color/app_dark_blue_highlight" android:state_checked="true" android:state_focused="true"/>

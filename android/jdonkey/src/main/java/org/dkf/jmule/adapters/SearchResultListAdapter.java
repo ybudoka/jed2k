@@ -21,6 +21,7 @@ package org.dkf.jmule.adapters;
 import android.content.Context;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
@@ -186,6 +187,18 @@ public abstract class SearchResultListAdapter extends AbstractListAdapter<Search
         } else {
             sourceLink.setText(R.string.search_source_type_dht);
         }
+
+        // The row itself starts the download on click and shows the menu on long press.
+        // This button is the one-click way to the same menu - long press with a pointer
+        // you have to keep steady is not a gesture to build a UI on.
+        ImageButton menuButton = findView(view, R.id.view_bittorrent_search_result_list_item_menu);
+        menuButton.setTag(entry);
+        menuButton.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showItemMenu(v);
+            }
+        });
     }
 
     @Override

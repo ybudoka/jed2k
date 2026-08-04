@@ -32,7 +32,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textSize="12sp"
+            android:textSize="@dimen/text_x_small"
             android:textColor="@color/app_text_secondary"/>
 
         <CheckBox
@@ -40,7 +40,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/logs_verbose"
-            android:textSize="12sp"
+            android:textSize="@dimen/text_x_small"
             android:textColor="@color/app_text_primary"/>
 
     </LinearLayout>
@@ -64,7 +64,7 @@
                 android:layout_height="wrap_content"
                 android:padding="8dp"
                 android:typeface="monospace"
-                android:textSize="10sp"
+                android:textSize="@dimen/logs_text"
                 android:textIsSelectable="true"
                 android:textColor="@color/app_text_primary"/>
 
@@ -83,7 +83,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textSize="12sp"
+            android:textSize="@dimen/text_x_small"
             android:text="@string/logs_refresh"/>
 
         <Button
@@ -91,7 +91,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textSize="12sp"
+            android:textSize="@dimen/text_x_small"
             android:text="@string/logs_copy"/>
 
         <Button
@@ -99,7 +99,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textSize="12sp"
+            android:textSize="@dimen/text_x_small"
             android:text="@string/logs_share"/>
 
         <Button
@@ -107,7 +107,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textSize="12sp"
+            android:textSize="@dimen/text_x_small"
             android:text="@string/logs_clear"/>
 
     </LinearLayout>

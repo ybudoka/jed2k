@@ -30,6 +30,12 @@
     <!-- Promotions -->
 
     <!-- Text sizes -->
+    <!-- Two sizes below text_micro, for the dense chrome that cannot grow as much as
+         body text: the file-type buttons under the search box and the third line of a
+         result row. Named rather than inlined so values-sw600dp can scale them too. -->
+    <dimen name="text_micro_dense">10.0sp</dimen>
+    <dimen name="text_x_small_dense">13.0sp</dimen>
+
     <dimen name="text_micro">11.0sp</dimen>
     <dimen name="text_x_small">12.0sp</dimen>
     <dimen name="text_small">14.0sp</dimen>
@@ -40,6 +46,10 @@
 
     <dimen name="dialog_min_width_major">200dp</dimen>
     <dimen name="dialog_min_width_minor">300dp</dimen>
+
+    <!-- log screen: monospace and dense, deliberately smaller than body text.
+         values-sw600dp/dimens.xml scales it up for headset panels and tablets. -->
+    <dimen name="logs_text">11sp</dimen>
 
     <dimen name="text_size_micro">12.0sp</dimen>
     <dimen name="text_size_large">18.0sp</dimen>

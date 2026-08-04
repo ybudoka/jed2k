@@ -274,6 +274,8 @@
     <string name="transfers_context_menu_find_sources_started">Demande de sources au serveur et au KAD</string>
     <string name="transfers_context_menu_find_sources_skipped">Déjà demandé récemment, ou le transfert est à l\'arrêt</string>
 
+    <string name="list_item_menu">Autres actions</string>
+
     <!-- recherche -->
     <string name="search_more_none">Le serveur a renvoyé tout ce qu\'il avait pour cette recherche</string>
     <string name="search_more_no_server">Aucun serveur connecté</string>

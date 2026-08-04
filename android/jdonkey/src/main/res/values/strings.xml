@@ -301,6 +301,8 @@
     <string name="transfers_context_menu_find_sources_started">Asking the server and KAD for more sources</string>
     <string name="transfers_context_menu_find_sources_skipped">Already asked recently, or the transfer is not running</string>
 
+    <string name="list_item_menu">More actions</string>
+
     <!-- search -->
     <string name="search_more_none">The server returned everything it had for this search</string>
     <string name="search_more_no_server">Not connected to a server</string>
