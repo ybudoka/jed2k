@@ -256,4 +256,22 @@
     <string name="jed2k_is_running">Le service ED2K fonctionne</string>
     <string name="build">build</string>
     <string name="comma">,</string>
+
+    <!-- écran des journaux -->
+    <string name="logs">Journaux</string>
+    <string name="logs_summary">Voir ce que fait l\'application, et le partager dans un rapport de bogue</string>
+    <string name="logs_verbose">Détaillé</string>
+    <string name="logs_refresh">Actualiser</string>
+    <string name="logs_copy">Copier</string>
+    <string name="logs_share">Partager</string>
+    <string name="logs_clear">Effacer</string>
+    <string name="logs_empty">Aucun journal pour le moment.</string>
+    <string name="logs_copied">Journal copié dans le presse-papiers</string>
+    <string name="logs_share_failed">Impossible de partager le journal</string>
+    <string name="logs_line_count">%1$d / %2$d lignes</string>
+
+    <!-- recherche -->
+    <string name="search_more_none">Le serveur a renvoyé tout ce qu\'il avait pour cette recherche</string>
+    <string name="search_more_no_server">Aucun serveur connecté</string>
+    <string name="search_no_answer">Le serveur n\'a pas répondu</string>
 </resources>

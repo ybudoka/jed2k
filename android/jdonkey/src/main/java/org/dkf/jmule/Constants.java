@@ -90,6 +90,13 @@ public final class Constants {
     public static final String THEME_LIGHT = "light";
     public static final String THEME_DARK = "dark";
 
+    /**
+     * Whether the log screen captures DEBUG as well as INFO. Persisted so a problem
+     * that only shows up during startup can still be caught: the choice has to survive
+     * the restart that reproduces it.
+     */
+    public static final String PREF_KEY_GUI_VERBOSE_LOG = "jmule.prefs.gui.verbose_log";
+
     // ed2k common and servers
     public static final String PREF_KEY_USER_AGENT = "jmule.prefs.user_agent";
     public static final String PREF_KEY_NICKNAME = "jmule.prefs.nickname";

@@ -137,7 +137,26 @@ public class SettingsActivity extends PreferenceActivity {
         useWordsFilterCheckbox();
         shareMediaDownloadsCheckbox();
         setupThemeOption();
+        setupLogs();
         setupAbout();
+    }
+
+    /**
+     * Opens the log screen. Same explicit-Intent treatment as the About entry.
+     */
+    private void setupLogs() {
+        Preference logs = findPreference("jmule.prefs.show_logs");
+        if (logs == null) {
+            return;
+        }
+
+        logs.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                startActivity(new Intent(SettingsActivity.this, LogsActivity.class));
+                return true;
+            }
+        });
     }
 
     /**

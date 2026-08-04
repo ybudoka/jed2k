@@ -116,6 +116,9 @@
         <activity android:name="org.dkf.jmule.activities.AboutActivity"
                   android:label="@string/about"/>
 
+        <activity android:name="org.dkf.jmule.activities.LogsActivity"
+                  android:label="@string/logs"/>
+
         <activity android:name="org.dkf.jmule.activities.SettingsActivity"
                   android:label="@string/activity_preferences_name"
                   android:theme="@style/Preferences"/>

@@ -22,6 +22,7 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -44,6 +45,8 @@ import org.dkf.jmule.util.UIUtils;
 import org.dkf.jmule.views.AbstractDialog.OnDialogClickListener;
 import org.dkf.jmule.views.*;
 import org.slf4j.Logger;
+
+import java.util.List;
 
 /**
  * @author gubatron
@@ -71,6 +74,34 @@ public final class SearchFragment extends AbstractFragment implements
     private final SparseArray<Byte> toTheLeftOf = new SparseArray<>(9);
 
     private boolean awaitingResults = false;
+
+    /**
+     * A search is a request with no failure reply: a server that has nothing to say
+     * says nothing. Without a deadline the progress spinner stays up forever and the
+     * screen looks frozen, so every wait is armed with one.
+     */
+    private static final long SEARCH_TIMEOUT_MS = 30000;
+
+    private final Handler searchTimeoutHandler = new Handler();
+
+    private final Runnable searchTimeoutTask = new Runnable() {
+        @Override
+        public void run() {
+            if (!awaitingResults) {
+                return;
+            }
+
+            log.warn("search timed out after {} ms with no answer", SEARCH_TIMEOUT_MS);
+            awaitingResults = false;
+
+            if (searchProgress != null) {
+                searchProgress.setProgressEnabled(false);
+            }
+            showSearchView(getView());
+
+            notifyUser(R.string.search_no_answer);
+        }
+    };
 
     public SearchFragment() {
         super(R.layout.fragment_search);
@@ -141,6 +172,7 @@ public final class SearchFragment extends AbstractFragment implements
 
     @Override
     public void onDestroy() {
+        disarmSearchTimeout();
         Engine.instance().removeListener(this);
         super.onDestroy();
     }
@@ -273,6 +305,7 @@ public final class SearchFragment extends AbstractFragment implements
                             , 0
                             , expression);
 
+                    armSearchTimeout();
                     searchProgress.setProgressEnabled(true);
                     showSearchView(getView());
                 }
@@ -291,6 +324,7 @@ public final class SearchFragment extends AbstractFragment implements
                             , searchParametersView.getMaxSize() * 1024 * 1024
                             , searchParametersView.getSourcesCount()
                             , searchParametersView.getCompleteSources());
+                    armSearchTimeout();
                     searchProgress.setProgressEnabled(true);
                     showSearchView(getView());
                 }
@@ -311,18 +345,61 @@ public final class SearchFragment extends AbstractFragment implements
         }
     }
 
+    /**
+     * Asks the connected server for the next page of the current search
+     * (OP_QUERY_MORE_RESULT).
+     * <p>
+     * Three things used to go wrong here and together they made the action look dead.
+     * It fired even when no server was connected, and even when the server had already
+     * returned everything - in which case nothing ever comes back, because the protocol
+     * has no "no more results" reply. And whatever the outcome, it wiped the results the
+     * user already had before asking, so a silent server left an empty list and a
+     * spinner that never stopped.
+     * <p>
+     * Now: refuse with a reason when the request cannot be answered, keep the current
+     * results and append the new page to them, and give up after a deadline.
+     */
     public void performSearchMore() {
-        if (!Engine.instance().getCurrentServerId().isEmpty()) {
-            awaitingResults = true;
-            adapter.clear();
-            // the counters were left untouched here while the result list was wiped,
-            // so the per-type badges kept adding up across pages
-            fileTypeCounter.clear();
-            refreshFileTypeCounters(false);
-            Engine.instance().performSearchMore();
-            searchProgress.setProgressEnabled(true);
-            showSearchView(getView());
+        if (Engine.instance().getCurrentServerId().isEmpty()) {
+            log.info("search more ignored, no server connected");
+            notifyUser(R.string.search_more_no_server);
+            return;
         }
+
+        if (!adapter.hasMoreResults()) {
+            log.info("search more ignored, server reported no more results");
+            notifyUser(R.string.search_more_none);
+            return;
+        }
+
+        log.info("search more requested");
+        awaitingResults = true;
+        // the previous page stays on screen; the new one is appended to it, with
+        // duplicates dropped by hash in the adapter
+        Engine.instance().performSearchMore();
+        armSearchTimeout();
+        searchProgress.setProgressEnabled(true);
+        showSearchView(getView());
+    }
+
+    /**
+     * Toasts only while the fragment is still attached - these fire from a delayed
+     * Runnable, which can outlive the activity.
+     */
+    private void notifyUser(int messageId) {
+        Activity activity = getActivity();
+        if (isAdded() && activity != null) {
+            UIUtils.showLongMessage(activity, messageId);
+        }
+    }
+
+    private void armSearchTimeout() {
+        searchTimeoutHandler.removeCallbacks(searchTimeoutTask);
+        searchTimeoutHandler.postDelayed(searchTimeoutTask, SEARCH_TIMEOUT_MS);
+    }
+
+    private void disarmSearchTimeout() {
+        searchTimeoutHandler.removeCallbacks(searchTimeoutTask);
     }
 
     public void removeEntry(SearchEntry searchEntry) {
@@ -332,6 +409,7 @@ public final class SearchFragment extends AbstractFragment implements
 
     private void cancelSearch() {
         log.info("cancel search wait res {}", awaitingResults?"YES":"NO");
+        disarmSearchTimeout();
         if (awaitingResults) {
             awaitingResults = false;
             adapter.clear();
@@ -344,12 +422,16 @@ public final class SearchFragment extends AbstractFragment implements
     }
 
     private void searchCompleted(final SearchResultAlert alert) {
+        disarmSearchTimeout();
+
         if (awaitingResults) {
             awaitingResults = false;
-            adapter.addResults(alert.getResults(), alert.isHasMoreResults());
+            // count only what was actually added - a "more results" page repeats hits
+            // from the previous one, and those are dropped by the adapter
+            final List<SearchEntry> added = adapter.addResults(alert.getResults(), alert.isHasMoreResults());
 
             // temporary solution, next use filter by hash to support related search
-            for (SearchEntry entry : alert.getResults()) {
+            for (SearchEntry entry : added) {
                 fileTypeCounter.increment(MediaType.getMediaTypeForExtension(FilenameUtils.getExtension(entry.getFileName())));
             }
         }

@@ -283,4 +283,22 @@
     <string name="dummy_uploads_indicator" translatable="false">0 @ 0 KB/s</string>
     <string name="build">build</string>
     <string name="comma">,</string>
+
+    <!-- log screen -->
+    <string name="logs">Logs</string>
+    <string name="logs_summary">See what the app is doing, and share it in a bug report</string>
+    <string name="logs_verbose">Verbose</string>
+    <string name="logs_refresh">Refresh</string>
+    <string name="logs_copy">Copy</string>
+    <string name="logs_share">Share</string>
+    <string name="logs_clear">Clear</string>
+    <string name="logs_empty">Nothing logged yet.</string>
+    <string name="logs_copied">Log copied to clipboard</string>
+    <string name="logs_share_failed">Unable to share the log</string>
+    <string name="logs_line_count">%1$d / %2$d lines</string>
+
+    <!-- search -->
+    <string name="search_more_none">The server returned everything it had for this search</string>
+    <string name="search_more_no_server">Not connected to a server</string>
+    <string name="search_no_answer">The server did not answer</string>
 </resources>
