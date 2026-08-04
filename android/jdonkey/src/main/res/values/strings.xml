@@ -23,6 +23,13 @@
 
     <!-- non HTML tags. -->
     <string name="app_name">Mule on Android</string>
+    <string name="mule_running">Running in the background</string>
+
+    <!-- Light / dark theme -->
+    <string name="theme">Theme</string>
+    <string name="theme_system">System default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
     <string name="activity_preferences_name">Settings</string>
     <string name="exit">Exit</string>
     <string name="search_label">Search</string>

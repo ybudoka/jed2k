@@ -118,9 +118,13 @@ android {
         }
     }
 
+    // NOTE: there used to be a second `buildTypes { release { minifyEnabled false } }`
+    // block right below this one. Gradle merges the two, so the intent expressed here
+    // ("minify the release build") was silently overwritten by the later block.
+    // Keeping a single, explicit definition instead.
     buildTypes {
         release {
-            minifyEnabled true
+            minifyEnabled false
             buildConfigField "String", "FLAVOR", "\"basic\""
             //proguardFiles getDefaultProguardFile('proguard-android.txt'),
             //        'proguard-rules.pro'
@@ -128,18 +132,11 @@ android {
             //multiDexKeepFile file('multidex-config.txt')
         }
         debug {
-            minifyEnabled true
+            minifyEnabled false
             buildConfigField "String", "FLAVOR", "\"basic\""
             //proguardFiles getDefaultProguardFile('proguard-android.txt'),
             //        'proguard-rules.pro'
             //multiDexKeepFile file('multidex-config.txt')
-        }
-    }
-
-    buildTypes {
-        release {
-            minifyEnabled false
-            //proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 

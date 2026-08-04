@@ -23,7 +23,6 @@ import android.content.Context;
 import android.os.Build;
 import android.os.Looper;
 
-import org.dkf.jmule.util.SystemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -129,11 +128,18 @@ public final class AndroidPlatform {
      * @return
      */
     public static boolean saf(File f) {
-        if (SystemUtils.hasAndroid11OrNewer()) {
-            // We should have File operations back again on Android 11
-            return false;
-        }
-
+        // There used to be a blanket `if (hasAndroid11OrNewer()) return false;` here,
+        // on the grounds that "we should have File operations back again on Android 11".
+        // That is true for *primary* shared storage, but a removable SD card is still
+        // only writable through the Storage Access Framework on Android 11 and up.
+        //
+        // Its one caller is MainActivity.checkSDPermission(), so the early return meant
+        // the SAF permission prompt was never shown on modern Android and downloads
+        // aimed at an SD card fell back to plain File I/O and failed.
+        //
+        // No special case is needed: getExtSdCardFolder() below already builds its list
+        // from getExternalFilesDirs() minus the primary volume, so it only ever matches
+        // a secondary/removable card and returns null for primary storage.
         AndroidPlatform p = Platforms.get();
 
         if (!(p.fileSystem() instanceof LollipopFileSystem)) {

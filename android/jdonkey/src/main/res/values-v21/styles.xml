@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="AppTheme" parent="android:Theme.Material.Light">
-    </style>
+    <!--
+      This file used to declare an empty "AppTheme" extending android:Theme.Material.Light.
+      Nothing referenced it - the app is themed with Theme.FrostWire (AppCompat) - and
+      an unused Material parent here only invites someone to "fix" the wrong theme.
+
+      minSdkVersion is 21, so a -v21 qualifier no longer selects anything the default
+      values/ folder does not already cover. Kept as an empty resource file rather than
+      deleted so the qualifier folder stays available if a real v21-only override is
+      ever needed.
+    -->
 </resources>

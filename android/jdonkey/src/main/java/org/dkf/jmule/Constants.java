@@ -79,6 +79,15 @@ public final class Constants {
     public static final String PREF_KEY_GUI_ALERTED_SAFE_MODE = "jmule.prefs.gui.alerted.safe_mode";
     public static final String PREF_KEY_GUI_SHARE_MEDIA_DOWNLOADS = "jmule.prefs.gui.share_media_downloads";
 
+    /**
+     * Light / dark theme selection. One of {@link #THEME_SYSTEM}, {@link #THEME_LIGHT}
+     * or {@link #THEME_DARK}.
+     */
+    public static final String PREF_KEY_GUI_THEME = "jmule.prefs.gui.theme";
+    public static final String THEME_SYSTEM = "system";
+    public static final String THEME_LIGHT = "light";
+    public static final String THEME_DARK = "dark";
+
     // ed2k common and servers
     public static final String PREF_KEY_USER_AGENT = "jmule.prefs.user_agent";
     public static final String PREF_KEY_NICKNAME = "jmule.prefs.nickname";

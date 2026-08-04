@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Created by ap197_000 on 07.09.2016.
@@ -60,14 +61,13 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
 
             @Override
             public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-                if (key.equals(Constants.PREF_KEY_SERVERS_LIST)) {
+                // key is null when the preferences are cleared wholesale (API 30+)
+                if (Constants.PREF_KEY_SERVERS_LIST.equals(key) && list != null) {
                     setupAdapter();
                     invalidateServersState();
                 }
             }
         };
-
-        ConfigurationManager.instance().registerOnPreferenceChange(prefListener);
     }
 
     @Override
@@ -78,6 +78,12 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
     }
 
     public void setupAdapter() {
+        // called from MainActivity on incoming ed2k:// links, which can land before
+        // the view hierarchy exists
+        if (list == null || getActivity() == null) {
+            return;
+        }
+
         if (adapter == null) {
             adapter = new ServersAdapter(getActivity());
         }
@@ -112,33 +118,38 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
     public void onResume() {
         super.onResume();
         Engine.instance().setListener(this);
+        // registered here (and dropped in onPause) instead of in the constructor,
+        // which leaked the fragment into SharedPreferences for the whole process life
+        ConfigurationManager.instance().registerOnPreferenceChange(prefListener);
         invalidateServersState();
-        warnServiceStopped(getView());
+        warnServiceStopped();
     }
 
     @Override
     public void onPause() {
         super.onPause();
         Engine.instance().removeListener(this);
+        ConfigurationManager.instance().unregisterOnPreferenceChange(prefListener);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
         Engine.instance().removeListener(this);
+        ConfigurationManager.instance().unregisterOnPreferenceChange(prefListener);
     }
 
-    private void warnServiceStopped(View v) {
-        if (Engine.instance().isStopped()) {
-            log.info("service is stopped");
-            serviceStopped.setVisibility(View.VISIBLE);
-        } else {
-            log.info("service available");
-            serviceStopped.setVisibility(View.GONE);
+    private void warnServiceStopped() {
+        if (serviceStopped == null) {
+            return;
         }
+        serviceStopped.setVisibility(Engine.instance().isStopped() ? View.VISIBLE : View.GONE);
     }
 
     private void invalidateServersState() {
+        if (adapter == null) {
+            return;
+        }
         final String connectedServerId = Engine.instance().getCurrentServerId();
         boolean needRefresh = adapter.process(new ServerEntryProcessor() {
             @Override
@@ -157,6 +168,7 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
     }
 
     private void handleServerIdChanged(final String id, int userId) {
+        if (adapter == null) return;
         ServerEntry se = adapter.getItem(id);
         if (se != null) {
             se.userId = userId;
@@ -173,6 +185,7 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
     }
 
     private void handleServerConnectionAlert(final String id) {
+        if (adapter == null) return;
         ServerEntry se = adapter.getItem(id);
         if (se != null) {
             se.connStatus = ServerEntry.ConnectionStatus.CONNECTING;
@@ -181,6 +194,7 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
     }
 
     private void handleServerConnectionClosed(final String id) {
+        if (adapter == null) return;
         ServerEntry se = adapter.getItem(id);
         if (se != null) {
             se.userId = 0;
@@ -192,6 +206,7 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
     }
 
     private void handleServerStatus(final String id, int uc, int fc) {
+        if (adapter == null) return;
         ServerEntry se = adapter.getItem(id);
         if (se != null) {
             se.usersCount = uc;
@@ -204,7 +219,7 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
 
     @Override
     public void onListen(ListenAlert alert) {
-        getActivity().runOnUiThread(new Runnable() {
+        runOnUiThreadSafely(new Runnable() {
             @Override
             public void run() {
                 listenAlert();
@@ -219,7 +234,7 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
 
     @Override
     public void onServerConnectionAlert(final ServerConnectionAlert alert) {
-        getActivity().runOnUiThread(new Runnable() {
+        runOnUiThreadSafely(new Runnable() {
             @Override
             public void run() {
                 handleServerConnectionAlert(alert.identifier);
@@ -229,7 +244,7 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
 
     @Override
     public void onServerMessage(final ServerMessageAlert alert) {
-        getActivity().runOnUiThread(new Runnable() {
+        runOnUiThreadSafely(new Runnable() {
             @Override
             public void run() {
                 handleServerMessage(alert.identifier, alert.msg);
@@ -239,7 +254,7 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
 
     @Override
     public void onServerStatus(final ServerStatusAlert alert) {
-        getActivity().runOnUiThread(new Runnable() {
+        runOnUiThreadSafely(new Runnable() {
             @Override
             public void run() {
                 handleServerStatus(alert.identifier, alert.usersCount, alert.filesCount);
@@ -249,7 +264,7 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
 
     @Override
     public void onServerIdAlert(final ServerIdAlert alert) {
-        getActivity().runOnUiThread(new Runnable() {
+        runOnUiThreadSafely(new Runnable() {
             @Override
             public void run() {
                 handleServerIdChanged(alert.identifier, alert.userId);
@@ -259,7 +274,7 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
 
     @Override
     public void onServerConnectionClosed(final ServerConectionClosed alert) {
-        getActivity().runOnUiThread(new Runnable() {
+        runOnUiThreadSafely(new Runnable() {
             @Override
             public void run() {
                 handleServerConnectionClosed(alert.identifier);
@@ -330,7 +345,7 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
 
     @Override
     public void onShow() {
-        warnServiceStopped(getView());
+        warnServiceStopped();
     }
 
     @Override
@@ -386,9 +401,15 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
 
         @Override
         public boolean equals(Object o) {
-            return (o != null
-                    && o instanceof ServerEntry
-                    && ((ServerEntry)o).getIdentifier().compareTo(getIdentifier()) == 0);
+            return (o instanceof ServerEntry)
+                    && ((ServerEntry) o).getIdentifier().equals(getIdentifier());
+        }
+
+        @Override
+        public int hashCode() {
+            // equals() is identifier based, hashCode() must agree with it or the
+            // entries misbehave inside the adapter's HashSet of checked items
+            return getIdentifier().hashCode();
         }
     }
 
@@ -436,6 +457,10 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
                     icon.setAlpha(0.4f);
                     break;
                 case CONNECTING:
+                    // a recycled row keeps whatever icon the previous server had,
+                    // so the connecting state has to set its own artwork too
+                    icon.setImageResource(R.drawable.ic_flash_on_black_24dp);
+                    icon.setAlpha(1.0f);
                     AlphaAnimation animation1 = new AlphaAnimation(0.5f, 1.0f);
                     animation1.setDuration(300);
                     animation1.setStartOffset(100);
@@ -447,7 +472,7 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
             }
 
             if (item.filesCount != 0 && item.usersCount != 0) {
-                details.setText(String.format("%s: %d %s: %d",
+                details.setText(String.format(Locale.getDefault(), "%s: %d   %s: %d",
                         getString(R.string.users_count),
                         item.usersCount,
                         getString(R.string.files_count),
@@ -457,40 +482,39 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
                 details.setText(getString(R.string.NA));
             }
 
+            // always assign: without the else branch a recycled row showed the
+            // user id of whichever server previously occupied that view
             if (item.userId != 0) {
+                userId.setVisibility(View.VISIBLE);
                 userId.setText(String.format("%s: %s",
                         getString(R.string.user_id),
                         Utils.isLowId(item.userId)?"LowID":"HiID"));
+            } else {
+                userId.setText("");
+                userId.setVisibility(View.GONE);
             }
         }
 
         public void addServers(final Collection<ServerMet.ServerMetEntry> servers) {
-            ServerEntry se = getActiveItem();
-            clear();
+            ServerEntry active = getActiveItem();
+            List<ServerEntry> entries = new ArrayList<>(servers.size());
 
-            for(final ServerMet.ServerMetEntry e: servers) {
+            for (final ServerMet.ServerMetEntry e : servers) {
                 ServerEntry newSE = new ServerEntry(e);
-                if (newSE.equals(se)) {
-                    newSE = se;
-                }
-
-                list.add(newSE);
+                // keep the live connection state of the server we are talking to
+                entries.add(newSE.equals(active) ? active : newSE);
             }
 
-            for(final ServerMet.ServerMetEntry e: servers) {
-                ServerEntry newSE = new ServerEntry(e);
-                if (newSE.equals(se)) {
-                    newSE = se;
-                }
-
-                visualList.add(newSE);
-            }
+            // list and visualList alias the same backing list when no filter is
+            // active, so populating both in turn listed every server twice.
+            setList(entries);
+            notifyDataSetChanged();
         }
 
         final ServerEntry getItem(final String id) {
             for(int i = 0; i < getCount(); ++i) {
                 ServerEntry sr = getItem(i);
-                if (sr.getIdentifier().compareTo(id) == 0) return sr;
+                if (sr != null && sr.getIdentifier().equals(id)) return sr;
             }
 
             return null;
@@ -499,7 +523,7 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
         final ServerEntry getActiveItem() {
             for(int i = 0; i < getCount(); ++i) {
                 ServerEntry se = getItem(i);
-                if (se.connStatus != ServerEntry.ConnectionStatus.DISCONNECTED) return se;
+                if (se != null && se.connStatus != ServerEntry.ConnectionStatus.DISCONNECTED) return se;
             }
 
             return null;
@@ -508,9 +532,9 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
 
         public final boolean process(final ServerEntryProcessor p) {
             boolean affected = false;
-            for(int i = 0; i < getCount(); ++i) {
+            for (int i = 0; i < getCount(); ++i) {
                 ServerEntry sr = getItem(i);
-                if (p.process(getItem(i))) affected = true;
+                if (sr != null && p.process(sr)) affected = true;
             }
 
             return affected;

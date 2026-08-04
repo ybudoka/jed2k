@@ -115,6 +115,7 @@ public class MainActivity extends AbstractActivity implements
     private final Stack<Integer> fragmentsStack;
     private BroadcastReceiver mainBroadcastReceiver;
     private boolean externalStoragePermissionsRequested = false;
+    private boolean notificationsPermissionRequested = false;
     private ServerMet lastLoadedServers = null;
 
     public MainActivity() {
@@ -246,6 +247,11 @@ public class MainActivity extends AbstractActivity implements
         if (intent == null) {
             return;
         }
+
+        super.onNewIntent(intent);
+        // without this getIntent() keeps returning the intent the activity was
+        // created with, so later isShutdown()/extra lookups read stale data
+        setIntent(intent);
 
         if (isShutdown(intent)) {
             return;
@@ -437,6 +443,7 @@ public class MainActivity extends AbstractActivity implements
 
         if (ConfigurationManager.instance().getBoolean(Constants.PREF_KEY_GUI_TOS_ACCEPTED)) {
             checkExternalStoragePermissions();
+            checkPostNotificationsPermission();
         }
     }
 
@@ -465,8 +472,27 @@ public class MainActivity extends AbstractActivity implements
         final DangerousPermissionsChecker accessCoarseLocationChecker =
                 new DangerousPermissionsChecker(this, DangerousPermissionsChecker.ACCESS_COARSE_LOCATION_PERMISSIONS_REQUEST_CODE);
         checkers.put(DangerousPermissionsChecker.ACCESS_COARSE_LOCATION_PERMISSIONS_REQUEST_CODE, accessCoarseLocationChecker);
+        // POST_NOTIFICATIONS, runtime granted since Android 13
+        final DangerousPermissionsChecker postNotificationsChecker =
+                new DangerousPermissionsChecker(this, DangerousPermissionsChecker.POST_NOTIFICATIONS_PERMISSIONS_REQUEST_CODE);
+        checkers.put(DangerousPermissionsChecker.POST_NOTIFICATIONS_PERMISSIONS_REQUEST_CODE, postNotificationsChecker);
         // add more permissions checkers if needed...
         return checkers;
+    }
+
+    /**
+     * Without POST_NOTIFICATIONS the permanent status notification and the
+     * "download finished" notification never reach the user on Android 13+.
+     */
+    private void checkPostNotificationsPermission() {
+        if (notificationsPermissionRequested) {
+            return;
+        }
+        DangerousPermissionsChecker checker = permissionsCheckers.get(DangerousPermissionsChecker.POST_NOTIFICATIONS_PERMISSIONS_REQUEST_CODE);
+        if (checker != null && checker.noAccess()) {
+            notificationsPermissionRequested = true;
+            checker.requestPermissions();
+        }
     }
 
     private void registerMainBroadcastReceiver() {
@@ -486,8 +512,9 @@ public class MainActivity extends AbstractActivity implements
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
+        // super must always run, it is what persists the view hierarchy state
+        super.onSaveInstanceState(outState);
         if (outState != null) {
-            super.onSaveInstanceState(outState);
             saveLastFragment(outState);
             saveFragmentsStack(outState);
         }
@@ -522,8 +549,13 @@ public class MainActivity extends AbstractActivity implements
 
     private void checkExternalStoragePermissions() {
         DangerousPermissionsChecker checker = permissionsCheckers.get(DangerousPermissionsChecker.EXTERNAL_STORAGE_PERMISSIONS_REQUEST_CODE);
+        // the rationale branch could be taken with a null checker, and then
+        // requestPermissions() dereferenced it
+        if (checker == null) {
+            return;
+        }
         boolean shouldShowRequestPermissionRationaleForReadExternal = ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_EXTERNAL_STORAGE);
-        if (shouldShowRequestPermissionRationaleForReadExternal || (!externalStoragePermissionsRequested && checker != null && checker.noAccess())) {
+        if (shouldShowRequestPermissionRationaleForReadExternal || (!externalStoragePermissionsRequested && checker.noAccess())) {
             checker.requestPermissions();
             externalStoragePermissionsRequested = true;
         }
@@ -598,6 +630,9 @@ public class MainActivity extends AbstractActivity implements
     }
 
     private void toggleDrawer() {
+        if (navigationMenu == null) {
+            return;
+        }
         if (navigationMenu.isOpen()) {
             navigationMenu.hide();
         } else {
@@ -658,7 +693,11 @@ public class MainActivity extends AbstractActivity implements
     }
 
     private FragmentTransaction hideFragments(FragmentTransaction ts) {
-        return ts.hide(search).hide(transfers).hide(servers);
+        // findFragmentById() can hand back null while the activity is being recreated
+        if (search != null) ts.hide(search);
+        if (transfers != null) ts.hide(transfers);
+        if (servers != null) ts.hide(servers);
+        return ts;
     }
 
     private void setupInitialFragment(Bundle savedInstanceState) {
@@ -718,6 +757,9 @@ public class MainActivity extends AbstractActivity implements
     }
 
     private void switchContent(Fragment fragment, boolean addToStack) {
+        if (fragment == null) {
+            return;
+        }
         hideFragments(getFragmentManager().beginTransaction()).show(fragment).commitAllowingStateLoss();
         if (addToStack && (fragmentsStack.isEmpty() || fragmentsStack.peek() != fragment.getId())) {
             fragmentsStack.push(fragment.getId());
@@ -778,13 +820,19 @@ public class MainActivity extends AbstractActivity implements
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        navigationMenu.syncState();
+        // navigationMenu is null whenever initComponents() bailed out early
+        // (shutdown intent, or the wizard has not been completed yet)
+        if (navigationMenu != null) {
+            navigationMenu.syncState();
+        }
     }
 
     @Override
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
-        navigationMenu.syncState();
+        if (navigationMenu != null) {
+            navigationMenu.syncState();
+        }
     }
 
     private void setupActionBar() {
@@ -798,8 +846,17 @@ public class MainActivity extends AbstractActivity implements
     }
 
     private void setupDrawer() {
+        // onResume() used to call this unconditionally, building a fresh NavigationMenu
+        // (and a fresh ActionBarDrawerToggle listener on the DrawerLayout) every time
+        // the activity came back to the foreground.
+        if (navigationMenu != null) {
+            return;
+        }
         DrawerLayout drawerLayout = findView(R.id.drawer_layout);
         Toolbar toolbar = findToolbar();
+        if (drawerLayout == null || toolbar == null) {
+            return;
+        }
         navigationMenu = new NavigationMenu(controller, drawerLayout, toolbar);
     }
 
@@ -849,6 +906,8 @@ public class MainActivity extends AbstractActivity implements
 
     public void syncNavigationMenu() {
         invalidateOptionsMenu();
-        navigationMenu.updateCheckedItem(getNavMenuIdByFragment(getCurrentFragment()));
+        if (navigationMenu != null) {
+            navigationMenu.updateCheckedItem(getNavMenuIdByFragment(getCurrentFragment()));
+        }
     }
 }

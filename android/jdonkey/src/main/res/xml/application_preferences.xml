@@ -40,6 +40,14 @@
     <PreferenceCategory
         android:key="@string/common_settings">
 
+        <ListPreference
+            android:key="jmule.prefs.gui.theme"
+            android:title="@string/theme"
+            android:dialogTitle="@string/theme"
+            android:defaultValue="system"
+            android:entries="@array/theme_entries"
+            android:entryValues="@array/theme_values"/>
+
         <EditTextPreference
             android:key="jmule.prefs.nickname"
             android:summary="@string/how_other_users_will_see_you"

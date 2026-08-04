@@ -86,7 +86,9 @@ public class BitField implements Iterable<Boolean>, Serializable {
         int ret = 0;
         int num_bytes = m_size / 8;
         for (int i = 0; i < num_bytes; ++i) {
-            ret += num_bits[m_bytes[i] & 0xf] + num_bits[m_bytes[i] >> 4];
+            // java bytes are signed: for any byte >= 0x80, m_bytes[i] >> 4 sign-extends
+            // to a negative index and indexes num_bits out of bounds
+            ret += num_bits[m_bytes[i] & 0xf] + num_bits[(m_bytes[i] >> 4) & 0xf];
         }
 
         int rest = m_size - num_bytes * 8;
@@ -188,7 +190,10 @@ public class BitField implements Iterable<Boolean>, Serializable {
 
     @Override
     public ByteBuffer get(ByteBuffer src) throws JED2KException {
-        int size = src.getShort();
+        // the size is written as an unsigned 16 bit value; reading it back with a signed
+        // getShort() turned any size above 32767 negative, and bitsToBytes() of that
+        // reaches new byte[negative]
+        int size = src.getShort() & 0xffff;
         byte[] temp = new byte[bitsToBytes(size)];
         try {
             src.get(temp);

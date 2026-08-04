@@ -20,6 +20,7 @@ package org.dkf.jmule.views;
 import android.app.Activity;
 import android.app.Fragment;
 import android.app.FragmentManager;
+import android.content.Context;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -29,6 +30,7 @@ import android.widget.FrameLayout;
 import androidx.appcompat.widget.Toolbar;
 
 import org.dkf.jmule.R;
+import org.dkf.jmule.util.NightMode;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -45,11 +47,24 @@ public abstract class AbstractActivity extends Activity {
 
     private boolean paused;
 
+    /**
+     * Theme setting this instance was built with, so onResume() can tell whether the
+     * user changed it in the settings screen while we sat on the back stack.
+     */
+    private String appliedNightModeSetting;
+
     public AbstractActivity(int layoutResId) {
         this.layoutResId = layoutResId;
         this.fragmentTags = new ArrayList<>();
 
         this.paused = false;
+    }
+
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        // applies the light/dark preference before any resource is resolved
+        appliedNightModeSetting = NightMode.currentSetting();
+        super.attachBaseContext(NightMode.wrap(newBase));
     }
 
     @Override
@@ -66,6 +81,15 @@ public abstract class AbstractActivity extends Activity {
     protected void onResume() {
         paused = false;
         super.onResume();
+
+        // the theme is applied in attachBaseContext, so a change made in the settings
+        // screen only reaches this activity by rebuilding it. Comparing against the
+        // value we attached with keeps this from looping.
+        if (appliedNightModeSetting != null
+                && !appliedNightModeSetting.equals(NightMode.currentSetting())) {
+            recreate();
+            return;
+        }
     }
 
     @Override

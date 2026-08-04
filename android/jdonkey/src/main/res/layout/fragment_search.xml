@@ -69,12 +69,10 @@
             android:visibility="gone"
     />
 
-    <LinearLayout
-        android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@android:color/black"
-            android:orientation="horizontal">
-    </LinearLayout>
+    <!-- An empty LinearLayout with a black background and wrap_content height used to
+         sit here: it measured to zero and drew nothing, but it would have become a
+         black bar the moment anything was added to it, and it is one more view for
+         every layout pass to walk. -->
 
     <org.dkf.jmule.views.SwipeLayout
             android:id="@+id/fragment_search_swipe"
@@ -95,7 +93,7 @@
                     android:id="@+id/fragment_search_list"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:background="@color/basic_white"
+                    android:background="@color/body_background_white"
                     android:fastScrollEnabled="true"/>
         </FrameLayout>
     </org.dkf.jmule.views.SwipeLayout>

@@ -29,6 +29,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.CheckBoxPreference;
 import android.preference.EditTextPreference;
+import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
 import android.preference.PreferenceActivity;
@@ -51,6 +52,7 @@ import org.dkf.jmule.ED2KService;
 import org.dkf.jmule.Engine;
 import org.dkf.jmule.R;
 import org.dkf.jmule.StoragePicker;
+import org.dkf.jmule.util.NightMode;
 import org.dkf.jmule.util.UIUtils;
 import org.dkf.jmule.views.preference.NumberPickerPreference;
 import org.dkf.jmule.views.preference.StoragePreference;
@@ -78,6 +80,12 @@ public class SettingsActivity extends PreferenceActivity {
         if (currentPreferenceKey != null) {
             onPreferenceTreeClick(getPreferenceScreen(), getPreferenceManager().findPreference(currentPreferenceKey));
         }
+    }
+
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        // applies the light/dark preference before any resource is resolved
+        super.attachBaseContext(NightMode.wrap(newBase));
     }
 
     @Override
@@ -128,6 +136,42 @@ public class SettingsActivity extends PreferenceActivity {
         setupTransferOptions();
         useWordsFilterCheckbox();
         shareMediaDownloadsCheckbox();
+        setupThemeOption();
+    }
+
+    /**
+     * Light / dark / follow-the-system. The choice is read in
+     * {@link org.dkf.jmule.util.NightMode#wrap(Context)} when an activity attaches its
+     * base context, so every open activity has to be rebuilt for it to take effect.
+     */
+    private void setupThemeOption() {
+        final ListPreference themePreference = (ListPreference) findPreference(Constants.PREF_KEY_GUI_THEME);
+        if (themePreference == null) {
+            return;
+        }
+
+        if (themePreference.getValue() == null) {
+            themePreference.setValue(Constants.THEME_SYSTEM);
+        }
+        themePreference.setSummary(themePreference.getEntry());
+
+        themePreference.setOnPreferenceChangeListener(new OnPreferenceChangeListener() {
+            @Override
+            public boolean onPreferenceChange(Preference preference, Object newValue) {
+                final String value = (newValue != null) ? newValue.toString() : Constants.THEME_SYSTEM;
+                ConfigurationManager.instance().setString(Constants.PREF_KEY_GUI_THEME, value);
+
+                int index = themePreference.findIndexOfValue(value);
+                if (index >= 0) {
+                    themePreference.setSummary(themePreference.getEntries()[index]);
+                }
+
+                // recreate() re-runs attachBaseContext(); MainActivity picks the new
+                // theme up the same way when it is resumed and recreated behind us
+                recreate();
+                return true;
+            }
+        });
     }
 
     private void setupTransferOptions() {

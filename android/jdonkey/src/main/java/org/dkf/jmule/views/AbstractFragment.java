@@ -18,6 +18,7 @@
 
 package org.dkf.jmule.views;
 
+import android.app.Activity;
 import android.app.Fragment;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -65,6 +66,30 @@ public abstract class AbstractFragment extends Fragment {
 
     public boolean isPaused() {
         return paused;
+    }
+
+    /**
+     * Posts to the UI thread only while the fragment is still attached.
+     * <p>
+     * Session alerts are delivered from the ed2k network threads and can land just
+     * after the fragment detaches; calling {@code getActivity().runOnUiThread(...)}
+     * directly threw a NullPointerException in that window. The extra isAdded()
+     * check inside the runnable covers a detach happening between post and run.
+     */
+    protected final void runOnUiThreadSafely(final Runnable task) {
+        final Activity activity = getActivity();
+        if (activity == null || activity.isFinishing()) {
+            return;
+        }
+
+        activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (isAdded()) {
+                    task.run();
+                }
+            }
+        });
     }
 
     @SuppressWarnings("unchecked")

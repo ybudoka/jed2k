@@ -13,41 +13,39 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+  Moved out of drawable-hdpi/: this is pure XML with no density-specific content, so
+  restricting it to the hdpi bucket only meant every other density resolved it through
+  a fallback.
+
+  Restyled as a filled pill. The track used to be transparent with a 1px hairline
+  outline; 1px does not scale with density and at a 6dp bar height the outline read as
+  a rendering artefact rather than a deliberate border.
 -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android" >
 
     <item android:id="@android:id/background">
         <shape>
-            <solid android:color="@android:color/transparent" />
-
-            <stroke
-                android:width="1px"
-                android:color="#ffa9b4bb" />
+            <solid android:color="@color/basic_gray_medium" />
+            <corners android:radius="3dp" />
         </shape>
     </item>
+
     <item android:id="@android:id/secondaryProgress">
         <clip>
             <shape>
-                <solid android:color="@color/app_highlight_text" />
-
-                <stroke
-                    android:width="1px"
-                    android:color="#ffa9b4bb" />
+                <solid android:color="@color/basic_blue_transparent" />
+                <corners android:radius="3dp" />
             </shape>
         </clip>
     </item>
+
     <item android:id="@android:id/progress">
         <clip>
             <shape>
-                <solid android:color="@color/basic_blue_highlight" />
-
-                <stroke
-                    android:width="1px"
-                    android:color="#ffa9b4bb" />
+                <solid android:color="@color/basic_blue_highlight_dark" />
+                <corners android:radius="3dp" />
             </shape>
         </clip>
     </item>

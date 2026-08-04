@@ -147,7 +147,7 @@ public final class SearchFragment extends AbstractFragment implements
 
     @Override
     public void onShow() {
-        warnNoServerNoDhtConnections(getView());
+        warnNoServerNoDhtConnections();
         warnSafeMode();
         searchParametersView.showSearchSourceChooser(!Engine.instance().getCurrentServerId().isEmpty() && Engine.instance().isDhtEnabled());
     }
@@ -244,7 +244,7 @@ public final class SearchFragment extends AbstractFragment implements
     }
 
     private void performSearch(String query) {
-        warnNoServerNoDhtConnections(getView());
+        warnNoServerNoDhtConnections();
         warnSafeMode();
         String expression = query.trim();
         if (expression.isEmpty()) return;
@@ -315,6 +315,9 @@ public final class SearchFragment extends AbstractFragment implements
         if (!Engine.instance().getCurrentServerId().isEmpty()) {
             awaitingResults = true;
             adapter.clear();
+            // the counters were left untouched here while the result list was wiped,
+            // so the per-type badges kept adding up across pages
+            fileTypeCounter.clear();
             refreshFileTypeCounters(false);
             Engine.instance().performSearchMore();
             searchProgress.setProgressEnabled(true);
@@ -405,7 +408,7 @@ public final class SearchFragment extends AbstractFragment implements
         Tasks.executeParallel(task);
     }
 
-    private void warnNoServerNoDhtConnections(View v) {
+    private void warnNoServerNoDhtConnections() {
         if (Engine.instance().getCurrentServerId().isEmpty() && !Engine.instance().isDhtEnabled()) {
             serverConnectionWarning.setVisibility(View.VISIBLE);
         } else {
@@ -433,8 +436,12 @@ public final class SearchFragment extends AbstractFragment implements
         }
         final byte currentFileType = (byte) adapter.getFileType();
         if (currentFileType != -1) { // SearchResultListAdapter#NO_FILE_TYPE (refactor this)
-            final byte nextFileType = (right) ? toTheRightOf.get(currentFileType) : toTheLeftOf.get(currentFileType);
-            searchInput.performClickOnRadioButton(nextFileType);
+            // SparseArray.get() returns null for an unmapped key; unboxing it straight
+            // into a byte crashed for any file type outside the nine mapped ones
+            final Byte nextFileType = (right) ? toTheRightOf.get(currentFileType) : toTheLeftOf.get(currentFileType);
+            if (nextFileType != null) {
+                searchInput.performClickOnRadioButton(nextFileType.byteValue());
+            }
         }
     }
 
@@ -446,7 +453,7 @@ public final class SearchFragment extends AbstractFragment implements
     @Override
     public void onSearchResult(final SearchResultAlert alert) {
         log.info("search result size {} more {}", alert.getResults().size(), alert.isHasMoreResults()?"YES":"NO");
-        getActivity().runOnUiThread(new Runnable() {
+        runOnUiThreadSafely(new Runnable() {
             @Override
             public void run() {
                 searchCompleted(alert);
@@ -481,7 +488,7 @@ public final class SearchFragment extends AbstractFragment implements
 
     @Override
     public void onTransferAdded(TransferAddedAlert alert) {
-        getActivity().runOnUiThread(new Runnable() {
+        runOnUiThreadSafely(new Runnable() {
             @Override
             public void run() {
                 adapter.notifyDataSetChanged();
@@ -491,7 +498,7 @@ public final class SearchFragment extends AbstractFragment implements
 
     @Override
     public void onTransferRemoved(TransferRemovedAlert alert) {
-        getActivity().runOnUiThread(new Runnable() {
+        runOnUiThreadSafely(new Runnable() {
             @Override
             public void run() {
                 adapter.notifyDataSetChanged();

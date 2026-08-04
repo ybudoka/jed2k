@@ -66,7 +66,9 @@ public final class UIUtils {
      */
     private static NumberFormat NUMBER_FORMAT0; // localized "#,##0"
 
-    private static final String[] BYTE_UNITS = new String[]{"b", "KB", "Mb", "Gb", "Tb"};
+    // "b" is bits and "Mb"/"Gb"/"Tb" are megabits/gigabits/terabits - these are byte
+    // counts, so the units have to be capitalised consistently.
+    private static final String[] BYTE_UNITS = new String[]{"B", "KB", "MB", "GB", "TB", "PB"};
 
     public static final String GENERAL_UNIT_KBPSEC = "KB/s";
 
@@ -232,10 +234,16 @@ public final class UIUtils {
     }
 
     public static String getBytesInHuman(long size) {
-        int i;
+        if (size <= 0) {
+            return "0 " + BYTE_UNITS[0];
+        }
+
+        int i = 0;
         float sizeFloat = (float) size;
-        for (i = 0; sizeFloat > 1024; i++) {
+        // the loop had no upper bound, so a value past the last unit walked off the array
+        while (sizeFloat > 1024f && i < BYTE_UNITS.length - 1) {
             sizeFloat /= 1024f;
+            i++;
         }
         return String.format(Locale.US, "%.2f %s", sizeFloat, BYTE_UNITS[i]);
     }

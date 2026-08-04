@@ -605,10 +605,20 @@ public class Session extends Thread {
                 if (tracker != null && !tracker.isAborted()) {
                     try {
                         tracker.searchKeywords(keyword, new DhtKeywordsCallback(s, minSize, maxSize, sources, completeSources));
-                    } catch(JED2KException e) {
+                        return;
+                    } catch (JED2KException e) {
+                        // The common one here is DHT_REQUEST_ALREADY_RUNNING: traversals are
+                        // keyed by (target id, algorithm name), so searching the same keyword
+                        // again while the previous traversal is still in flight is refused.
                         log.error("[session] unable to start search keyword {} in DHT {}", keyword, e);
                     }
                 }
+
+                // The UI enters "awaiting results" the moment it asks for a search and only
+                // leaves it when a SearchResultAlert arrives. Every branch above used to fall
+                // through silently, so a refused or impossible DHT search left the progress
+                // spinner up forever with no way back except cancelling by hand.
+                s.pushAlert(new SearchResultAlert(new LinkedList<SearchEntry>(), false));
             }
         });
     }
