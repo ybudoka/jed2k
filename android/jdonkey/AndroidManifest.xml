@@ -27,6 +27,30 @@
          are silently dropped -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
+    <!--
+      Hardware the app does not actually need.
+
+      Android treats android.hardware.touchscreen as *required* when a manifest says
+      nothing about it, and ACCESS_WIFI_STATE implicitly requires android.hardware.wifi.
+      That is fine on a phone and wrong here: this is a network client driven entirely
+      through ordinary widgets, and it should stay installable on devices with no
+      touchscreen - Meta Quest and other Horizon OS headsets, Android TV, Chromebooks -
+      where input arrives as pointer/controller events that the framework delivers as
+      touch anyway.
+
+      None of this changes behaviour on a phone; it only stops the package manager and
+      the stores from filtering the app off hardware it runs on perfectly well.
+    -->
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
+    <uses-feature android:name="android.hardware.touchscreen.multitouch" android:required="false"/>
+    <uses-feature android:name="android.hardware.faketouch" android:required="false"/>
+    <uses-feature android:name="android.hardware.wifi" android:required="false"/>
+    <uses-feature android:name="android.hardware.telephony" android:required="false"/>
+    <uses-feature android:name="android.hardware.location" android:required="false"/>
+    <uses-feature android:name="android.hardware.location.gps" android:required="false"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <uses-feature android:name="android.hardware.microphone" android:required="false"/>
+
     <application
         android:name="org.dkf.jmule.MainApplication"
         android:allowBackup="true"
