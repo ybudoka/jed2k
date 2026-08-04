@@ -72,6 +72,13 @@ public class Transfer {
     private long nextTimeForDhtSourcesRequest = 0;
 
     /**
+     * Floor between two user-triggered source requests. See {@link #requestMoreSources}.
+     */
+    private static final long MANUAL_SOURCES_REQUEST_INTERVAL = Time.minutes(1);
+
+    private long lastManualSourcesRequest = 0;
+
+    /**
      * disk io
      */
     private PieceManager pm = null;
@@ -197,6 +204,67 @@ public class Transfer {
             setState(TransferStatus.TransferState.FINISHED);
             needSaveResumeData = false;
         }
+    }
+
+    /**
+     * Asks for sources again at the next tick, ignoring the back-off timers.
+     * <p>
+     * The automatic schedule is deliberately slow once a transfer has any peer at all -
+     * twenty minutes between server requests - because ed2k servers ban clients that
+     * re-ask for the same file too often. That is right for a background transfer and
+     * wrong for a user staring at a download that is going nowhere, hence this.
+     * <p>
+     * The requests themselves are left to {@link #secondTick}, so they go through the
+     * same paused/aborted/finished and connection-limit checks as the scheduled ones.
+     *
+     * @return false when nothing was scheduled, and the caller should say why: the
+     * transfer is not running, it is already at the connection limit, or it was asked
+     * too recently
+     */
+    public boolean requestMoreSources() {
+        final long now = Time.currentTime();
+        final int limit = (session != null) ? session.settings.sessionConnectionsLimit : 0;
+
+        if (!allowManualSourcesRequest(!isPaused() && !isAborted() && !isFinished()
+                , connections.size()
+                , limit
+                , now
+                , lastManualSourcesRequest)) {
+            log.debug("[transfer] manual sources request ignored for {}", hash);
+            return false;
+        }
+
+        log.info("[transfer] manual sources request for {}", hash);
+        lastManualSourcesRequest = now;
+        nextTimeForSourcesRequest = 0;
+        nextTimeForDhtSourcesRequest = 0;
+        return true;
+    }
+
+    /**
+     * The decision behind {@link #requestMoreSources}, kept free of transfer state so it
+     * can be exercised directly.
+     *
+     * @param running           transfer is neither paused, aborted nor finished
+     * @param connections       peers currently attached
+     * @param connectionsLimit  session-wide connection limit
+     * @param now               current time
+     * @param lastRequest       time of the previous manual request, 0 when there was none
+     */
+    public static boolean allowManualSourcesRequest(boolean running
+            , int connections
+            , int connectionsLimit
+            , long now
+            , long lastRequest) {
+
+        if (!running) return false;
+
+        // nowhere to put a new source
+        if (connections >= connectionsLimit) return false;
+
+        // A button is easy to tap twice, and servers ban clients that re-ask for the
+        // same file too often.
+        return lastRequest == 0 || now - lastRequest >= MANUAL_SOURCES_REQUEST_INTERVAL;
     }
 
     /**

@@ -88,6 +88,15 @@ public interface Transfer {
      */
     public List<String> getRemoteFileNames();
 
+    /**
+     * Re-asks the server and KAD for sources right away instead of waiting for the
+     * automatic back-off.
+     *
+     * @return false when nothing was asked - the transfer is not running, it is at the
+     * connection limit, or it was asked too recently
+     */
+    public boolean requestMoreSources();
+
     public boolean isPaused();
 
     public void pause();

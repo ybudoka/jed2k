@@ -390,6 +390,11 @@ public final class TransferManager {
         }
 
         @Override
+        public boolean requestMoreSources() {
+            return false;
+        }
+
+        @Override
         public boolean isPaused() {
             return paused;
         }

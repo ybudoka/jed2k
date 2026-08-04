@@ -165,6 +165,22 @@ public class TransferHandle implements Comparable<TransferHandle> {
     }
 
     /**
+     * Re-asks the server and KAD for sources without waiting for the back-off timers.
+     *
+     * @return false when nothing was scheduled - see {@link Transfer#requestMoreSources}
+     */
+    public boolean requestMoreSources() {
+        Transfer t = transfer.get();
+        if (t != null) {
+            synchronized (ses) {
+                return t.requestMoreSources();
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @return the distinct names sources have advertised for this file
      */
     public List<String> getRemoteFileNames() {

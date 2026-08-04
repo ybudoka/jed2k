@@ -297,6 +297,10 @@
     <string name="logs_share_failed">Unable to share the log</string>
     <string name="logs_line_count">%1$d / %2$d lines</string>
 
+    <string name="transfers_context_menu_find_sources">Find more sources</string>
+    <string name="transfers_context_menu_find_sources_started">Asking the server and KAD for more sources</string>
+    <string name="transfers_context_menu_find_sources_skipped">Already asked recently, or the transfer is not running</string>
+
     <!-- search -->
     <string name="search_more_none">The server returned everything it had for this search</string>
     <string name="search_more_no_server">Not connected to a server</string>

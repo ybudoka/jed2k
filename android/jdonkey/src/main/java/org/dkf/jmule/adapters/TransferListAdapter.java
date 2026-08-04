@@ -276,6 +276,11 @@ public class TransferListAdapter extends BaseExpandableListAdapter {
         // names the sources report for this hash - see ShowRemoteFileNamesMenuAction
         items.add(new ShowRemoteFileNamesMenuAction(context.get(), download));
 
+        // only useful while there is still something to download
+        if (!download.isComplete()) {
+            items.add(new FindMoreSourcesMenuAction(context.get(), download));
+        }
+
         items.add(new CancelMenuAction(context.get(), download, !download.isComplete()));
         items.add(new ShowThePathMenuAction(context.get(), download));
         return title;

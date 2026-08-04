@@ -147,6 +147,11 @@ public class ED2KTransfer implements Transfer {
     }
 
     @Override
+    public boolean requestMoreSources() {
+        return handle.requestMoreSources();
+    }
+
+    @Override
     public boolean isPaused() {
         return handle.isPaused();
     }
