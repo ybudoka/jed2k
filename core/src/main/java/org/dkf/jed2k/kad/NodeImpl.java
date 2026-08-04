@@ -305,7 +305,7 @@ public class NodeImpl implements ReqDispatcher {
                 o.setWasSent(true);
                 o.setFlags(o.getFlags() | Observer.FLAG_QUERIED);
                 o.setSentTime(Time.currentTime());
-                log.debug("[node] invoked {}", o);
+                log.trace("[node] invoked {}", o);
                 return true;
             } else {
                 log.debug("[node] invoke failed without error {}", o);

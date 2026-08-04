@@ -74,14 +74,14 @@ public abstract class Traversal {
             Observer o = results.get(i);
             if (Utils.isBit(o.getFlags(), Observer.FLAG_ALIVE)) --resultsTarget;
             if (Utils.isBit(o.getFlags(), Observer.FLAG_QUERIED)) continue;
-            log.debug("[traversal] {} nodes-left: {} invoke-count: {} branch-factor: {}",
+            log.trace("[traversal] {} nodes-left: {} invoke-count: {} branch-factor: {}",
                     getName(), results.size(), invokeCount, branchFactor);
 
             o.setFlags(o.getFlags() | Observer.FLAG_QUERIED);
 
             if (invoke(o)) {
                 assert invokeCount >= 0;
-                log.debug("[traversal] add request {}", o);
+                log.trace("[traversal] add request {}", o);
                 ++invokeCount;
             } else {
                 o.setFlags(o.getFlags() | Observer.FLAG_FAILED);
@@ -111,7 +111,7 @@ public abstract class Traversal {
     }
 
     public void addEntry(final KadId id, final Endpoint addr, byte flags, int portTcp, byte version) {
-        log.debug("[traversal] add entry {} {}", id, addr);
+        log.trace("[traversal] add entry {} {}", id, addr);
         //TODO check this assert later
         //LIBED2K_ASSERT(m_node.m_rpc.allocation_size() >= sizeof(find_data_observer));
         /*
@@ -188,7 +188,7 @@ public abstract class Traversal {
     }
 
     public void failed(final Observer o, int flags) {
-        log.debug("[traversal] failed {} flags {}", o, flags);
+        log.trace("[traversal] failed {} flags {}", o, flags);
         assert invokeCount >= 0;
 
         if (results.isEmpty()) return;
@@ -219,16 +219,16 @@ public abstract class Traversal {
             ++timeouts;
             --invokeCount;
             assert invokeCount >= 0;
-            log.debug("[traversal] {} {} failed branch-factor: {} invoke-count: {}", o, getName(), branchFactor, invokeCount);
+            log.trace("[traversal] {} {} failed branch-factor: {} invoke-count: {}", o, getName(), branchFactor, invokeCount);
         }
 
         if (Utils.isBit(flags, PREVENT_REQUEST)) {
             --branchFactor;
             if (branchFactor <= 0) branchFactor = 1;
-            log.debug("[traversal] prevent request branch-factor {}", branchFactor);
+            log.trace("[traversal] prevent request branch-factor {}", branchFactor);
         }
 
-        log.debug("[traversal] failed end invoke-count {} branch-factor {}", invokeCount, branchFactor);
+        log.trace("[traversal] failed end invoke-count {} branch-factor {}", invokeCount, branchFactor);
 
         addRequests();
         if (invokeCount == 0) done();

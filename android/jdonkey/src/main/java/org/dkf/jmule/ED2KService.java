@@ -794,7 +794,12 @@ public class ED2KService extends JobIntentService {
                 }
             } else if (a instanceof PortMapAlert) {
                 for (final AlertListener ls : listeners) ls.onPortMapAlert((PortMapAlert) a);
-                log.info("[ED2K service] port mapped {} {}", ((PortMapAlert)a).port, ((PortMapAlert)a).ec.getDescription());
+                final PortMapAlert pma = (PortMapAlert)a;
+                if (pma.ec == ErrorCode.NO_ERROR) {
+                    log.info("[ED2K service] port {} mapped", pma.port);
+                } else {
+                    log.info("[ED2K service] port {} is not mapped: {}", pma.port, pma.ec.getDescription());
+                }
             }
             else {
                 log.debug("[ED2K service] received unhandled alert {}", a);

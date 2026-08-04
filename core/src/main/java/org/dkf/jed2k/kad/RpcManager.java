@@ -27,7 +27,7 @@ public class RpcManager {
      *  @param o observer
      */
     public void invoke(final Observer o) {
-        log.debug("[rpc] invoke {}", o);
+        log.trace("[rpc] invoke {}", o);
         transactions.add(o);
     }
 
@@ -125,14 +125,16 @@ public class RpcManager {
             // also not have timed out yet
             long diff = now - o.getSentTime();
             if (diff < Time.seconds(TIMEOUT_SEC)) {
-                log.debug("[rpc] no timeout {} < {} time {}, send time {}", diff, Time.seconds(TIMEOUT_SEC), now, o.getSentTime());
+                log.trace("[rpc] no timeout {} < {} time {}, send time {}", diff, Time.seconds(TIMEOUT_SEC), now, o.getSentTime());
                 break;
             }
 
-            log.debug("[rpc] timeout {}", o);
+            log.trace("[rpc] timeout {}", o);
             itr.remove();
             timeouts.add(o);
         }
+
+        if (!timeouts.isEmpty()) log.debug("[rpc] {} transactions timed out, {} left", timeouts.size(), transactions.size());
 
         for(final Observer o: timeouts) {
             o.timeout();
@@ -154,6 +156,8 @@ public class RpcManager {
             if (o.hasShortTimeout()) continue;
             timeouts.add(o);
         }
+
+        if (!timeouts.isEmpty()) log.debug("[rpc] {} transactions reached short timeout", timeouts.size());
 
         for (Observer o : timeouts) {
             o.shortTimeout();

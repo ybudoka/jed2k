@@ -212,7 +212,13 @@ public abstract class Connection implements Dispatcher {
 
             lastReceive = Time.currentTime();
         } catch(JED2KException e) {
-            log.error(e.toString());
+            // remote side closed connection - it is a regular event, not an error
+            if (e.getErrorCode() == ErrorCode.END_OF_STREAM) {
+                log.debug("[connection on readable] {} closed by remote side", getEndpoint());
+            } else {
+                log.error("[connection on readable] {} error {}", getEndpoint(), e.toString());
+            }
+
             close(e.getErrorCode());
         }
     }

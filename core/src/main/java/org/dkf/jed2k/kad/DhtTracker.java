@@ -50,6 +50,16 @@ public class DhtTracker extends Thread {
     private static int OUTPUT_BUFFER_LIMIT = 8128;
     private static int INPUT_BUFFER_LIMIT = 8128;
 
+    /**
+     * nodes.dat contains hundreds of contacts and a restored routing table is large as well.
+     * pinging all of them at once produces a burst of hundreds of datagrams which are dropped
+     * silently by the local stack/router and leaves hundreds of RPC transactions expiring
+     * simultaneously, so initial nodes are pinged in small portions - one portion per tick
+     */
+    private static final int PINGS_PER_TICK = 20;
+    private static final int MAX_PENDING_PINGS = 5000;
+    private final ConcurrentLinkedQueue<KadEntry> pendingPings = new ConcurrentLinkedQueue<>();
+
     public DhtTracker(int listenPort
             , final KadId id
             , final InetSocketAddress storagePoint) {
@@ -151,6 +161,7 @@ public class DhtTracker extends Thread {
         long tickIntervalMs = Time.currentTime() - lastTick;
         if (tickIntervalMs >= 1000) {
             node.tick();
+            pingPendingNodes();
 
             lastTick = Time.currentTime();
             Runnable r = commands.poll();
@@ -173,7 +184,7 @@ public class DhtTracker extends Thread {
         try {
             assert incomingBuffer.remaining() == incomingBuffer.capacity();
             InetSocketAddress address = (InetSocketAddress) channel.receive(incomingBuffer);
-            log.debug("[tracker] receive {} bytes from {}", incomingBuffer.capacity() - incomingBuffer.remaining(), address);
+            log.trace("[tracker] receive {} bytes from {}", incomingBuffer.capacity() - incomingBuffer.remaining(), address);
             incomingBuffer.flip();
             incomingHeader.get(incomingBuffer);
             if (!incomingHeader.isDefined()) throw new JED2KException(ErrorCode.PACKET_HEADER_UNDEFINED);
@@ -181,7 +192,7 @@ public class DhtTracker extends Thread {
             incomingHeader.reset(incomingHeader.key(), incomingBuffer.remaining());
             Serializable s = combiner.unpack(incomingHeader, incomingBuffer);
             assert s != null;
-            log.debug("[tracker] packet {}: {}", s.bytesCount(), s);
+            log.trace("[tracker] packet {}: {}", s.bytesCount(), s);
 
             if (s instanceof KadDispatchable) {
                 ((KadDispatchable)s).dispatch(node, address);
@@ -203,14 +214,14 @@ public class DhtTracker extends Thread {
             incomingBuffer.clear();
 
             if (outgoingOrder.isEmpty()) {
-                log.debug("[tracker] set interests to OP_READ since outgoing order is empty");
+                log.trace("[tracker] set interests to OP_READ since outgoing order is empty");
                 key.interestOps(SelectionKey.OP_READ);
             }
         }
     }
 
     private boolean onWriteable() {
-        log.debug("[tracker] onWriteable, order size {}", outgoingOrder.size());
+        log.trace("[tracker] onWriteable, order size {}", outgoingOrder.size());
         if (outgoingOrder.isEmpty()) return false;
 
         Serializable packet = outgoingOrder.poll();
@@ -220,7 +231,7 @@ public class DhtTracker extends Thread {
         assert outgoingBuffer.remaining() == outgoingBuffer.capacity();
 
         try {
-            log.debug("[tracker] send packet size {} to {}", packet.bytesCount(), ep);
+            log.trace("[tracker] send packet size {} to {}", packet.bytesCount(), ep);
             combiner.pack(packet, outgoingBuffer);
             outgoingBuffer.flip();
             channel.send(outgoingBuffer, ep);
@@ -239,7 +250,7 @@ public class DhtTracker extends Thread {
         finally {
             // go to wait bytes mode when output order becomes empty
             if (outgoingOrder.isEmpty()) {
-                log.debug("[tracker] set interests to OP_READ");
+                log.trace("[tracker] set interests to OP_READ");
                 key.interestOps(SelectionKey.OP_READ);
             }
         }
@@ -261,7 +272,7 @@ public class DhtTracker extends Thread {
         }
 
         boolean wasInProgress = !outgoingOrder.isEmpty();
-        log.debug("[tracker] write was in progress {}", wasInProgress);
+        log.trace("[tracker] write was in progress {}", wasInProgress);
         outgoingOrder.add(packet);
         outgoingAddresses.add(ep);
 
@@ -273,9 +284,9 @@ public class DhtTracker extends Thread {
         if (key.isWritable()) {
             // return actual write result
             boolean res = onWriteable();
-            log.debug("[tracker] actual write to {} is {}", ep, res);
+            log.trace("[tracker] actual write to {} is {}", ep, res);
         } else {
-            log.debug("[tracker] set interests to OP_WRITE");
+            log.trace("[tracker] set interests to OP_WRITE");
             key.interestOps(SelectionKey.OP_WRITE);
         }
 
@@ -309,15 +320,14 @@ public class DhtTracker extends Thread {
      */
     public void addEntries(final List<NodeEntry> entries) {
         assert entries != null;
-        commands.add(() -> {
-            for(final NodeEntry e: entries) {
-                try {
-                    node.addNode(e.getEndpoint(), e.getId());
-                } catch(JED2KException ex) {
-                    log.error("[tracker] unable to add node {} due to error {}", e, ex);
-                }
-            }
-        });
+        final List<KadEntry> kadEntries = new LinkedList<>();
+        for(final NodeEntry e: entries) {
+            kadEntries.add(new KadEntry(e.getId()
+                    , new KadEndpoint(e.getEndpoint().getIP(), e.getEndpoint().getPort(), e.getPortTcp())
+                    , e.getVersion()));
+        }
+
+        enqueuePings(kadEntries);
     }
 
     /**
@@ -326,19 +336,46 @@ public class DhtTracker extends Thread {
      */
     public void addKadEntries(final List<KadEntry> entries) {
         assert entries != null;
-        commands.add(() -> {
-            int i = 0;
-            for(final KadEntry e: entries) {
-                try {
-                    node.addKadNode(e);
-                    log.trace("add kad entry {}", e.toString());
-                    ++i;
-                    //if (i > 100) break;
-                } catch(JED2KException ex) {
-                    log.error("[tracker] unable to add kad node {} due to error {}", e, ex);
-                }
+        enqueuePings(entries);
+    }
+
+    /**
+     * schedule initial nodes for pinging, actual requests are sent in small portions on ticks
+     * @param entries - nodes to ping
+     */
+    private void enqueuePings(final List<KadEntry> entries) {
+        int room = MAX_PENDING_PINGS - pendingPings.size();
+        int added = 0;
+
+        for(final KadEntry e: entries) {
+            if (added >= room) break;
+            pendingPings.add(e);
+            ++added;
+        }
+
+        log.info("[tracker] {} of {} initial nodes scheduled for ping", added, entries.size());
+    }
+
+    /**
+     * ping next portion of initial nodes, executed on tracker thread once per tick
+     */
+    private void pingPendingNodes() {
+        int count = 0;
+
+        while(count < PINGS_PER_TICK) {
+            final KadEntry e = pendingPings.poll();
+            if (e == null) break;
+            ++count;
+
+            try {
+                node.addKadNode(e);
+                log.trace("[tracker] ping initial node {}", e);
+            } catch(JED2KException ex) {
+                log.error("[tracker] unable to add kad node {} due to error {}", e, ex);
             }
-        });
+        }
+
+        if (count > 0) log.debug("[tracker] {} initial nodes pinged, {} still pending", count, pendingPings.size());
     }
 
     public synchronized void bootstrapTest(final InetSocketAddress ep) {
