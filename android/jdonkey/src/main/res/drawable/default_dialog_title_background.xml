@@ -21,7 +21,10 @@
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle" >
 
-    <solid android:color="@color/basic_blue_highlight" />
+    <!-- was basic_blue_highlight: white title text on a light cyan bar is barely
+         above 2:1, and under the dark theme the accent is lighter still. The toolbar
+         navy carries white text at ~11:1 in both themes. -->
+    <solid android:color="@color/app_toolbar_background" />
     <corners android:topLeftRadius="2dp" android:topRightRadius="2dp" />
 
 </shape>

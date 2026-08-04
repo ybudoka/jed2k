@@ -19,7 +19,7 @@
               android:id="@+id/notification_base"
               android:layout_width="match_parent"
               android:layout_height="wrap_content"
-              android:background="@android:color/white"
+              android:background="@android:color/transparent"
               android:orientation="horizontal"
               android:weightSum="1.0">
 

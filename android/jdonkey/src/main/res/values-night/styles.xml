@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Night overrides.
+
+  Almost nothing needs to live here: Theme.FrostWire inherits from
+  Theme.AppCompat.DayNight.NoActionBar and every colour it sets is a resource
+  reference, so it flips through values-night/colors.xml on its own.
+
+  The settings screen is the exception. SettingsActivity is a framework
+  PreferenceActivity themed with @style/Preferences, whose parent is the *light*
+  Holo theme - a parent cannot be swapped by a colour override, so the whole style
+  is restated here against the dark Holo parent. Android resolves styles per
+  configuration wholesale rather than merging them, hence the duplicated items;
+  keep the two copies in step.
+-->
+<resources>
+
+    <style name="Preferences" parent="android:Theme.Holo">
+        <item name="android:icon">@null</item>
+        <item name="android:actionBarStyle">@style/ActionBar</item>
+        <item name="android:homeAsUpIndicator">@drawable/home_as_up_padding</item>
+        <item name="android:checkboxStyle">@style/PreferencesCheckboxStyle</item>
+        <item name="android:listSeparatorTextViewStyle">@style/PreferenceListHeader</item>
+        <item name="android:textColorPrimary">@color/app_text_primary</item>
+        <item name="android:textColorSecondary">@color/app_text_secondary</item>
+        <item name="android:windowBackground">@color/body_background_gray_light</item>
+    </style>
+
+</resources>

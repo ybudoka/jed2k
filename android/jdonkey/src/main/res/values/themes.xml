@@ -21,7 +21,13 @@
 -->
 <resources xmlns:tools="http://schemas.android.com/tools" xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <style name="Theme.FrostWire" parent="Theme.AppCompat.Light.NoActionBar">
+    <!--
+      DayNight rather than Light: the parent resolves to the light AppCompat theme in
+      values/ and the dark one in values-night/, and every colour below is a resource
+      reference, so the whole theme flips from values-night/colors.xml with no second
+      copy of this style to keep in sync.
+    -->
+    <style name="Theme.FrostWire" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="colorPrimary">@color/basic_blue</item>
         <item name="colorPrimaryDark">@color/basic_blue_dark</item>
         <item name="colorAccent">@color/basic_blue_highlight_dark</item>

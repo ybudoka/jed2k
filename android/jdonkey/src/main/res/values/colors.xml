@@ -38,7 +38,7 @@
     <color name="basic_white">@android:color/white</color>
     <color name="basic_blue">#ff20415c</color>
     <color name="basic_blue_highlight">#ff29b6f6</color>
-    <color name="basic_blue_highlight_dark">#ff0288d1</color>
+    <color name="basic_blue_highlight_dark">#ff0277b6</color>
     <color name="basic_blue_darker_highlight">#ff0277bd</color>
     <color name="basic_blue_transparent">#6629b6f6</color>
     <color name="basic_blue_dark">#ff152b3e</color>
@@ -47,7 +47,7 @@
     <color name="basic_gray_lighter">#fff7f9fa</color>
     <color name="basic_yellow">#ffffe08a</color>
     <color name="basic_green">#ff12b886</color>
-    <color name="basic_green_dark">#ff0a9268</color>
+    <color name="basic_green_dark">#ff08805b</color>
     <color name="basic_gray_light">#fff2f4f6</color>
     <color name="basic_gray_medium">#ffe3e7ea</color>
     <color name="basic_gray_dark">#ffb0b8bf</color>
@@ -89,7 +89,7 @@
     <color name="app_list_cell_line">#ffe1e6ea</color>
     <color name="app_menu_item_line">#ff1a3448</color>
     <color name="app_light_gray_text">#ffd5dde4</color>
-    <color name="app_dark_grey_text">#ff6d7a85</color>
+    <color name="app_dark_grey_text">#ff5f6c77</color>
 
     <color name="browse_peer_listview_item_inactive_foreground">@color/app_dark_grey_text</color>
 
@@ -109,10 +109,18 @@
     <color name="app_divider_dark">#ff1a3448</color>
     <color name="app_divider_light">@color/app_list_cell_line</color>
 
+    <!-- Text-input surface and hint. Previously @android:color/white and a literal
+         #ffbfcfdc inside the layouts, both of which break under a dark theme. -->
+    <color name="app_input_background">@color/basic_white</color>
+    <color name="app_text_hint">#ff68757f</color>
+
+    <!-- Row press / selection wash, was a literal #ffe0e7ed in the drawable -->
+    <color name="app_pressed_background">#ffe0e7ed</color>
+
     <!-- Per-state accents for the transfers list -->
     <color name="transfer_state_downloading">@color/basic_blue_highlight_dark</color>
     <color name="transfer_state_completed">@color/basic_green_dark</color>
-    <color name="transfer_state_stalled">#ffe8a33d</color>
+    <color name="transfer_state_stalled">#ffa06400</color>
     <color name="transfer_state_paused">@color/app_text_secondary</color>
 
     <!-- Text Colors -->

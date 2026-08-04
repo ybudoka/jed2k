@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Dark theme palette.
+
+  Only the tokens that describe *surfaces and body text* are overridden here. The
+  app's chrome (toolbar, drawer header, the transfers tab strip and its status bar)
+  is navy in both themes, so anything that renders on top of that chrome -
+  basic_white, app_text_white, app_light_gray_text, frostwire_light_blue - is
+  deliberately left alone. Flipping those would put dark text on a dark bar.
+
+  Surface ladder, darkest to lightest:
+    app background          #ff10171d
+    row / card              #ff161f27
+    raised (dialogs, input) #ff1d2831
+    separators              #ff2a3945
+
+  Every foreground/background pair the app actually renders clears WCAG AA (4.5:1)
+  in this theme; the lowest is the input placeholder at 4.8:1. Contrast against the
+  row surface (#ff161f27):
+
+    app_text_primary   #ffe4eaef  13.8:1
+    app_text_secondary #ffa8b6c1   8.0:1
+    accent             #ff4fc3f7   8.3:1
+-->
+<resources>
+
+    <!-- Base greys become the dark surface ladder. Everything that references them
+         through the app_*/body_background_* aliases follows automatically. -->
+    <color name="basic_gray">#ff161f27</color>
+    <color name="basic_gray_lighter">#ff10171d</color>
+    <color name="basic_gray_light">#ff1d2831</color>
+    <color name="basic_gray_medium">#ff2a3945</color>
+    <color name="basic_gray_dark">#ff3a4b59</color>
+
+    <!-- Body text ladder inverts -->
+    <color name="basic_gray_text_dark">#ffe4eaef</color>
+    <color name="basic_gray_text_medium">#ffa8b6c1</color>
+    <color name="basic_gray_text_light">#ff74848f</color>
+
+    <!-- The navy chrome goes a shade deeper so the toolbar still separates from a
+         dark body without becoming a second bright surface -->
+    <color name="basic_blue">#ff16283a</color>
+    <color name="basic_blue_dark">#ff0d1620</color>
+    <color name="basic_blue_dark_highlight">#ff0a1119</color>
+
+    <!-- #0288d1 is too dark to read against a dark surface; lift the accent -->
+    <color name="basic_blue_highlight">#ff4fc3f7</color>
+    <color name="basic_blue_highlight_dark">#ff4fc3f7</color>
+    <color name="basic_blue_darker_highlight">#ff81d4fa</color>
+    <color name="basic_blue_transparent">#664fc3f7</color>
+
+    <!-- Surfaces named after their light-theme colour. The names lie in the dark
+         theme, but they are what the layouts already reference, and renaming them
+         across the whole app would be a much larger and riskier change. -->
+    <color name="body_background_white">#ff161f27</color>
+    <color name="app_background_white">#ff161f27</color>
+    <color name="app_light_background">#ff1d2831</color>
+    <color name="app_input_background">#ff1d2831</color>
+
+    <!-- Separators / press states -->
+    <color name="app_list_cell_line">#ff2a3945</color>
+    <color name="app_pressed_background">#ff243039</color>
+    <color name="app_menu_item_line">#ff223244</color>
+    <color name="app_dark_blue_selector">#ff1a2c3d</color>
+
+    <!-- Secondary greys used directly by name -->
+    <color name="app_text_secondary_dark">#ff9dabb6</color>
+    <color name="app_dark_grey_text">#ff9dabb6</color>
+    <color name="app_text_hint">#ff8794a0</color>
+
+    <!-- Explanation / wizard copy -->
+    <color name="app_text_wizard">#ffb3bcc4</color>
+    <color name="app_text_wizard_dark">#ff8d99a3</color>
+    <color name="frostwire_gray_explanation_text">#ffb3bcc4</color>
+    <color name="frostwire_gray_explanation_text_dark">#ff8d99a3</color>
+
+    <!-- Status colours, lightened so they stay legible on a dark surface -->
+    <color name="warning_red">#ffff6b6b</color>
+    <color name="basic_green">#ff38d9a9</color>
+    <color name="basic_green_dark">#ff20c997</color>
+    <color name="basic_yellow">#ff5a4a1f</color>
+    <color name="transfer_state_stalled">#ffffb454</color>
+
+</resources>

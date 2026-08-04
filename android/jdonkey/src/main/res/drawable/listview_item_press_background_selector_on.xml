@@ -22,7 +22,7 @@
 
     <item>
         <shape>
-            <solid android:color="#ffe0e7ed" />
+            <solid android:color="@color/app_pressed_background" />
         </shape>
     </item>
 

@@ -325,7 +325,10 @@
     <style name="SearchResultListItemSource">
         <item name="android:singleLine">true</item>
         <item name="android:textSize">14sp</item>
-        <item name="android:textColor">@color/basic_blue</item>
+        <!-- was basic_blue, the navy used for the toolbar. That is chrome colour, not
+             body colour: under the dark theme it renders navy-on-near-black. The
+             accent is the right token for a source label and reads in both themes. -->
+        <item name="android:textColor">@color/app_text_highlight</item>
     </style>
 
     <style name="BlueButton">
@@ -532,14 +535,20 @@
     <style name="NotificationAction.Collapse" parent="@style/NotificationAction">
     </style>
 
+    <!--
+      Notification RemoteViews. These used to hardcode a white background with black
+      title text, which is unreadable in a dark notification shade. The background is
+      transparent now (the system draws the shade) and the text colours resolve through
+      values/ vs values-night/, which RemoteViews pick up from the system configuration.
+    -->
     <style name="TransfersNotificationTitle">
-        <item name="android:textColor">@color/black</item>
+        <item name="android:textColor">@color/app_text_primary</item>
         <item name="android:fontFamily">sans-serif-condensed</item>
         <item name="android:textSize">@dimen/text_medium</item>
     </style>
 
     <style name="TransfersNotificationSub">
-        <item name="android:textColor">@color/app_dark_grey_text</item>
+        <item name="android:textColor">@color/app_text_secondary</item>
         <item name="android:fontFamily">sans-serif-light</item>
         <item name="android:textSize">@dimen/text_size_small</item>
     </style>
