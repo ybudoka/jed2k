@@ -264,9 +264,17 @@ public class TransferListAdapter extends BaseExpandableListAdapter {
         }
 
         items.add(new CopyToClipboardMenuAction(context.get(),
+                R.drawable.ic_content_copy_black_24dp,
+                R.string.transfers_context_menu_copy_name,
+                R.string.transfers_context_menu_copy_name_copied, download.getDisplayName()));
+
+        items.add(new CopyToClipboardMenuAction(context.get(),
                 R.drawable.ic_insert_link_black_24dp,
                 R.string.transfers_context_menu_copy_link,
                 R.string.transfers_context_menu_copy_link_copied, download.toLink()));
+
+        // names the sources report for this hash - see ShowRemoteFileNamesMenuAction
+        items.add(new ShowRemoteFileNamesMenuAction(context.get(), download));
 
         items.add(new CancelMenuAction(context.get(), download, !download.isComplete()));
         items.add(new ShowThePathMenuAction(context.get(), download));

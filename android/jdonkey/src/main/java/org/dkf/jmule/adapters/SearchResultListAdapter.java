@@ -34,6 +34,7 @@ import org.dkf.jmule.Engine;
 import org.dkf.jmule.R;
 import org.dkf.jmule.activities.MainActivity;
 import org.dkf.jmule.adapters.menu.BlockSearchAction;
+import org.dkf.jmule.adapters.menu.CopyToClipboardMenuAction;
 import org.dkf.jmule.adapters.menu.SearchMoreAction;
 import org.dkf.jmule.util.UIUtils;
 import org.dkf.jmule.views.AbstractListAdapter;
@@ -237,8 +238,18 @@ public abstract class SearchResultListAdapter extends AbstractListAdapter<Search
     }
 
     void populateMenuActions(SearchEntry entry, List<MenuAction> actions) {
+        if (entry == null) return;
+
+        // Offered for every result, whatever the source: copying the name is how you
+        // take a hit somewhere else - a web search, a note - without retyping it.
+        actions.add(new CopyToClipboardMenuAction(getContext(),
+                R.drawable.ic_content_copy_black_24dp,
+                R.string.transfers_context_menu_copy_name,
+                R.string.transfers_context_menu_copy_name_copied,
+                entry.getFileName()));
+
         // search more is available only on server source
-        if (entry == null || entry.getSource() != SearchEntry.SOURCE_SERVER) return;
+        if (entry.getSource() != SearchEntry.SOURCE_SERVER) return;
         // the adapter is not guaranteed to be hosted by MainActivity, a blind cast
         // turned a missing menu into a ClassCastException
         if (!(getContext() instanceof MainActivity)) return;

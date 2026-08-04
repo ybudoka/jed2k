@@ -142,6 +142,11 @@ public class ED2KTransfer implements Transfer {
     }
 
     @Override
+    public List<String> getRemoteFileNames() {
+        return handle.getRemoteFileNames();
+    }
+
+    @Override
     public boolean isPaused() {
         return handle.isPaused();
     }

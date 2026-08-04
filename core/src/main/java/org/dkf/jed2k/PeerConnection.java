@@ -162,6 +162,11 @@ public class PeerConnection extends Connection {
     private boolean transferringData = false;
 
     /**
+     * Name this peer advertises for the transfer's hash, from OP_REQFILENAMEANSWER.
+     */
+    private String remoteFileName = null;
+
+    /**
      * current peer request from remote peer
      * next will be payload data
      */
@@ -618,6 +623,18 @@ public class PeerConnection extends Connection {
                 , value);
 
         if (transfer != null && value.hash.equals(transfer.getHash())) {
+            // The name the peer knows this hash by. It was parsed and dropped on the
+            // floor before; sources routinely advertise the same file under different
+            // names, and seeing them is how you tell a mislabelled or fake one apart.
+            try {
+                remoteFileName = value.name.asString();
+                if (remoteFileName != null && !remoteFileName.isEmpty()) {
+                    transfer.addRemoteFileName(remoteFileName);
+                }
+            } catch (JED2KException e) {
+                log.debug("{} unable to decode remote file name {}", endpoint, e.getMessage());
+            }
+
             log.debug("file status request >> {}", endpoint);
             write(new FileStatusRequest(transfer.getHash()));
         } else {
@@ -1150,6 +1167,7 @@ public class PeerConnection extends Connection {
         i.setEndpoint(getEndpoint());
         i.setStrModVersion(remotePeerInfo.modVersion);
         i.setSourceFlag((getPeer()!=null)?getPeer().getSourceFlag():0);
+        i.setFileName(remoteFileName);
         return i;
     }
 

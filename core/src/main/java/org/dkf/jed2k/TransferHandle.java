@@ -164,6 +164,20 @@ public class TransferHandle implements Comparable<TransferHandle> {
         return new LinkedList<PeerInfo>();
     }
 
+    /**
+     * @return the distinct names sources have advertised for this file
+     */
+    public List<String> getRemoteFileNames() {
+        Transfer t = transfer.get();
+        if (t != null) {
+            synchronized (ses) {
+                return t.getRemoteFileNames();
+            }
+        }
+
+        return new LinkedList<String>();
+    }
+
     @Override
     public boolean equals(Object o) {
         return (o instanceof TransferHandle && ((TransferHandle)o).getHash().equals(getHash()));

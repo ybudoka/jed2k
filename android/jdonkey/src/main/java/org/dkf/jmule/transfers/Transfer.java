@@ -82,6 +82,12 @@ public interface Transfer {
 
     public List<PeerInfo> getItems();
 
+    /**
+     * @return distinct names the sources advertise for this file; ed2k has no
+     * authoritative name, each source reports its own
+     */
+    public List<String> getRemoteFileNames();
+
     public boolean isPaused();
 
     public void pause();

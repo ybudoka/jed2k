@@ -90,6 +90,14 @@ public class Transfer {
 
     private PieceBlock lastResumeBlock = null;
 
+    /**
+     * Distinct names the sources advertise for this hash, in the order first seen.
+     * ed2k has no authoritative file name - each source reports its own - so these are
+     * accumulated as peers answer and kept after they disconnect, which is the point:
+     * the list is what lets a user spot a mislabelled or faked file.
+     */
+    private final LinkedHashSet<String> remoteFileNames = new LinkedHashSet<>();
+
     private SpeedMonitor speedMon = new SpeedMonitor(30);
 
     public Transfer(Session s, final AddTransferParams atp) throws JED2KException {
@@ -188,6 +196,26 @@ public class Transfer {
             // for finished transfers no need to save resume data
             setState(TransferStatus.TransferState.FINISHED);
             needSaveResumeData = false;
+        }
+    }
+
+    /**
+     * Records a name a source reports for this file. Called from the peer connection
+     * when OP_REQFILENAMEANSWER arrives; duplicates are ignored.
+     */
+    void addRemoteFileName(final String name) {
+        if (name == null || name.isEmpty()) return;
+        synchronized (remoteFileNames) {
+            remoteFileNames.add(name);
+        }
+    }
+
+    /**
+     * @return snapshot of the distinct names sources reported, first seen first
+     */
+    public List<String> getRemoteFileNames() {
+        synchronized (remoteFileNames) {
+            return new ArrayList<>(remoteFileNames);
         }
     }
 

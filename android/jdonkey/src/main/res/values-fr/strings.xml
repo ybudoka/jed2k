@@ -83,6 +83,10 @@
     <string name="transfers_select_completed">terminés</string>
     <string name="transfers_context_menu_clear_finished">Effacer tous les transferts terminés</string>
     <string name="transfers_context_menu_copy_link_copied">Lien copié dans le presse-papiers</string>
+    <string name="transfers_context_menu_copy_name">Copier le nom du fichier</string>
+    <string name="transfers_context_menu_copy_name_copied">Nom du fichier copié dans le presse-papiers</string>
+    <string name="remote_file_names">Noms signalés par les sources</string>
+    <string name="remote_file_names_empty">Aucune source n\'a encore signalé de nom de fichier</string>
     <string name="transfers_context_menu_copy_link">Copier le lien</string>
     <string name="transfers_context_menu_pause_stop_all_transfers">Mettre en pause / arrêter tous les transferts</string>
     <string name="transfers_context_resume_all_torrent_transfers">Reprendre tous les transferts</string>

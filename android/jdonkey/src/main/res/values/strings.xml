@@ -101,6 +101,10 @@
     <string name="transfers_select_completed">completed</string>
     <string name="transfers_context_menu_clear_finished">Clear all finished transfers</string>
     <string name="transfers_context_menu_copy_link_copied">Link copied to clipboard</string>
+    <string name="transfers_context_menu_copy_name">Copy file name</string>
+    <string name="transfers_context_menu_copy_name_copied">File name copied to clipboard</string>
+    <string name="remote_file_names">Names reported by sources</string>
+    <string name="remote_file_names_empty">No source has reported a file name yet</string>
     <string name="transfers_context_menu_copy_link">Copy link</string>
     <string name="transfers_context_menu_pause_stop_all_transfers">Pause/Stop all transfers</string>
     <string name="transfers_context_resume_all_torrent_transfers">Resume all torrent transfers</string>
