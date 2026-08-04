@@ -81,4 +81,17 @@
     <color name="basic_yellow">#ff5a4a1f</color>
     <color name="transfer_state_stalled">#ffffb454</color>
 
+
+    <!--
+      Dark surface ladder for the card layout. Each step is a genuine step: the page is
+      below the card, the card is below the wash it takes when pointed at. Contrast of
+      body text (#ffe4eaef) on the card surface is 13.2:1.
+    -->
+    <color name="app_page_background">#ff0d1319</color>
+    <color name="app_card_background">#ff18222c</color>
+    <color name="app_card_stroke">#ff26333f</color>
+    <color name="app_card_hovered">#ff21303d</color>
+    <color name="app_card_pressed">#ff283a4a</color>
+    <color name="app_pill_background">#ff1f3444</color>
+
 </resources>

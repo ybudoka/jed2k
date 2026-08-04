@@ -16,6 +16,13 @@
 -->
 <resources>
 
+    <!-- Roomier cards. A 1000dp-wide panel with phone-sized rows looks like a phone
+         screenshot that has been stretched. -->
+    <dimen name="card_radius">16dp</dimen>
+    <dimen name="card_gutter">28dp</dimen>
+    <dimen name="card_gap">10dp</dimen>
+    <dimen name="card_padding">20dp</dimen>
+
     <dimen name="title_text">25sp</dimen>
     <dimen name="subtitle_text">20sp</dimen>
     <dimen name="body_text">17sp</dimen>
