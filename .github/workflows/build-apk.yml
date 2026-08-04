@@ -67,9 +67,13 @@ jobs:
         if: always()
         run: find android/jdonkey/build -name '*.apk' -print -exec ls -lh {} \; || true
 
+      # Just the copy that changeApkOutput() drops at the root of the module's build
+      # directory. Globbing **/*.apk also picked up the original under
+      # build/outputs/apk/basic/debug/, so the archive held the same APK twice and it
+      # was not obvious which one to install.
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: jed2k-android-debug-apk
-          path: android/jdonkey/build/**/*.apk
+          path: android/jdonkey/build/*.apk
           if-no-files-found: error
