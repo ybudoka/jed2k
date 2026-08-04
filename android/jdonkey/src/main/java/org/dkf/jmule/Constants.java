@@ -41,7 +41,9 @@ public final class Constants {
      */
     public static final String JED2K_BUILD = BUILD_PREFIX + (BuildConfig.VERSION_CODE % 1000);
 
-    public static final String APP_PACKAGE_NAME = "org.dkf.jmule";
+    // derived, not literal: the debug build appends an applicationIdSuffix so it can be
+    // installed next to the official one
+    public static final String APP_PACKAGE_NAME = BuildConfig.APPLICATION_ID;
 
     public static final String JED2K_VERSION_STRING = BuildConfig.VERSION_NAME;
 

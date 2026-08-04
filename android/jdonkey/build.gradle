@@ -74,6 +74,9 @@ android {
         minSdkVersion 21
         targetSdkVersion 33
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        // overridden by the debug build type so the two installs are told apart
+        // in the launcher
+        manifestPlaceholders = [appLabel: 'Mule on Android']
     }
 
     compileOptions {
@@ -154,6 +157,14 @@ android {
             minifyEnabled false
             buildConfigField "String", "FLAVOR", "\"basic\""
             signingConfig signingConfigs.debug
+
+            // Install alongside the official build instead of colliding with it.
+            // A debug APK can never update a Play/F-Droid install anyway - different
+            // signing key - so sharing the applicationId only produced a failed install.
+            // With the suffix both sit on the device at once, each with its own data.
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+            manifestPlaceholders = [appLabel: 'Mule (debug)']
             //proguardFiles getDefaultProguardFile('proguard-android.txt'),
             //        'proguard-rules.pro'
             //multiDexKeepFile file('multidex-config.txt')

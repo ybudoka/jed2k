@@ -170,13 +170,14 @@
                 android:enabled="true" />
     </PreferenceCategory>
 
+    <!-- The <intent> that used to be declared here hardcoded
+         android:targetPackage="org.dkf.jmule". The debug build carries an
+         applicationIdSuffix so it can be installed next to the official app, and that
+         literal would have sent this button to the *other* app - or nowhere. It is
+         wired up in SettingsActivity.setupAbout() instead, where the class reference
+         resolves against whichever package is actually running. -->
     <Preference
             android:key="jmule.prefs.show_about"
-            android:title="@string/about">
-        <intent
-                android:action="android.intent.action.VIEW"
-                android:targetPackage="org.dkf.jmule"
-                android:targetClass="org.dkf.jmule.activities.AboutActivity"/>
-    </Preference>
+            android:title="@string/about"/>
 
 </PreferenceScreen>

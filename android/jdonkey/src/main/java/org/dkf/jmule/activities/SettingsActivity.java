@@ -137,6 +137,28 @@ public class SettingsActivity extends PreferenceActivity {
         useWordsFilterCheckbox();
         shareMediaDownloadsCheckbox();
         setupThemeOption();
+        setupAbout();
+    }
+
+    /**
+     * Opens the About screen. Previously an <intent> element in
+     * application_preferences.xml with a hardcoded android:targetPackage, which breaks
+     * as soon as the applicationId carries a suffix. An explicit Intent built from the
+     * class resolves against whichever package is running.
+     */
+    private void setupAbout() {
+        Preference about = findPreference("jmule.prefs.show_about");
+        if (about == null) {
+            return;
+        }
+
+        about.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                startActivity(new Intent(SettingsActivity.this, AboutActivity.class));
+                return true;
+            }
+        });
     }
 
     /**
