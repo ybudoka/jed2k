@@ -163,11 +163,6 @@ public class LogsActivity extends AbstractActivity {
     private void refresh() {
         List<String> lines = LogBuffer.snapshot();
 
-        // Only follow the tail when the user is already there. Scrolling back to read
-        // something and being yanked to the bottom two seconds later would make the
-        // screen unusable while anything is running.
-        final boolean atBottom = isScrolledToBottom();
-
         StringBuilder sb = new StringBuilder(lines.size() * 80);
         for (String line : lines) {
             sb.append(line).append('\n');
@@ -176,24 +171,29 @@ public class LogsActivity extends AbstractActivity {
         logView.setText(sb.length() > 0 ? sb.toString() : getString(R.string.logs_empty));
         statusView.setText(getString(R.string.logs_line_count, lines.size(), LogBuffer.CAPACITY));
 
-        if (atBottom) {
-            scroller.post(new Runnable() {
-                @Override
-                public void run() {
-                    scroller.fullScroll(View.FOCUS_DOWN);
-                }
-            });
-        }
+        scrollToEnd();
     }
 
-    private boolean isScrolledToBottom() {
-        View content = scroller.getChildAt(0);
-        if (content == null) {
-            return true;
-        }
-        int bottomEdge = content.getBottom() - scroller.getHeight() - scroller.getScrollY();
-        // a few pixels of slack, the tail rarely lands exactly on the boundary
-        return bottomEdge <= 16;
+    /**
+     * Pins the view to the newest line.
+     * <p>
+     * Posted rather than called directly because the text was only just set: the
+     * TextView has not been measured yet, so its height is still the previous one and
+     * scrolling now would land short of the end.
+     * <p>
+     * scrollTo() rather than fullScroll(), which also moves focus - the log is
+     * selectable, so it would take focus off whatever the user was on.
+     */
+    private void scrollToEnd() {
+        scroller.post(new Runnable() {
+            @Override
+            public void run() {
+                View content = scroller.getChildAt(0);
+                if (content != null) {
+                    scroller.scrollTo(0, Math.max(0, content.getBottom() - scroller.getHeight()));
+                }
+            }
+        });
     }
 
     /**
