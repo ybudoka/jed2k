@@ -62,6 +62,7 @@ import org.dkf.jed2k.protocol.kad.KadId;
 import org.dkf.jed2k.protocol.kad.KadNodesDat;
 import org.dkf.jed2k.protocol.server.search.SearchRequest;
 import org.dkf.jmule.activities.MainActivity;
+import org.dkf.jmule.util.MulticastLease;
 import org.slf4j.Logger;
 
 import java.io.BufferedReader;
@@ -361,7 +362,12 @@ public class ED2KService extends JobIntentService {
         startingInProgress = false;
 
         try {
-            if (forwardPorts) session.startUPnP();
+            if (forwardPorts) {
+                // SSDP discovery is multicast, and Android filters multicast in the
+                // Wi-Fi driver unless someone holds a lock - see MulticastLease
+                MulticastLease.acquire(this);
+                session.startUPnP();
+            }
             else session.stopUPnP();
         } catch(JED2KException e) {
             log.error("start upnp error {}", e);
@@ -1274,6 +1280,7 @@ public class ED2KService extends JobIntentService {
             forwardPorts = forward;
             if (session != null) {
                 if (forward) {
+                    MulticastLease.acquire(this);
                     session.startUPnP();
                 } else {
                     session.stopUPnP();
