@@ -1,0 +1,65 @@
+name: Build debug APK
+
+# Produces a downloadable APK as a workflow artifact.
+#
+# Run it from the Actions tab ("Build debug APK" -> "Run workflow"), or let it run
+# automatically on a push to this branch. When it finishes, the APK is attached to
+# the run under "Artifacts".
+#
+# It builds the *debug* variant on purpose. The release variant in
+# android/jdonkey/build.gradle points its signing config at a hardcoded keystore
+# (/home/inkpot/dev/jdonkey.keystore) and prompts for the password through a Swing
+# dialog or the console, neither of which exists on a CI runner. Debug is signed
+# with the auto-generated debug key, which is fine for installing and testing but
+# not for distribution.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - claude/bugs-visual-improvements-62s462
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      # The Android Gradle Plugin pinned in android/jdonkey/build.gradle is 7.2.2,
+      # which runs on JDK 11. Newer JDKs are not supported by AGP 7.x.
+      - name: Set up JDK 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      # compileSdkVersion 33 and buildToolsVersion "31.0.0" from the module build file.
+      # The runner image ships some SDK packages already, but not necessarily these.
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-33 build-tools;31.0.0 platform-tools'
+
+      # There is no Gradle wrapper committed, so the version has to be pinned here.
+      # AGP 7.2.2 needs Gradle 7.3.3 or newer and does not work on Gradle 8:
+      # console/build.gradle uses `classifier =`, removed in Gradle 8.
+      - name: Set up Gradle 7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '7.6.4'
+
+      - name: Assemble debug APK
+        run: gradle :android:jdonkey:assembleBasicDebug --no-daemon --stacktrace
+
+      - name: Show what was produced
+        if: always()
+        run: find android/jdonkey/build -name '*.apk' -print -exec ls -lh {} \; || true
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: jed2k-android-debug-apk
+          path: android/jdonkey/build/**/*.apk
+          if-no-files-found: error
