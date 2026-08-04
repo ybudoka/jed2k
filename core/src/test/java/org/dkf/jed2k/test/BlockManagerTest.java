@@ -115,4 +115,58 @@ public class BlockManagerTest {
         src.retainAll(dst);
         assertEquals(src.size(), Constants.BLOCKS_PER_PIECE);
     }
+
+    /**
+     * A piece that never received all of its blocks must not produce a hash.
+     * <p>
+     * The hasher is fed incrementally, so digesting it early yields the MD4 of a prefix
+     * of the piece rather than of the piece. That used to be guarded by an assertion
+     * only, which is a no-op on Android, and the partial digest was handed to
+     * Transfer.onPieceHashCompleted() as though it were the real thing.
+     */
+    @Test
+    public void testPartialPieceProducesNoHash() {
+        BlockManager bm = new BlockManager(0, Constants.BLOCKS_PER_PIECE);
+
+        // register every block but the last one
+        for (int i = 0; i < Constants.BLOCKS_PER_PIECE - 1; ++i) {
+            buffer.position(i * (int) Constants.BLOCK_SIZE);
+            ByteBuffer localBuffer = buffer.slice();
+            localBuffer.limit((int) Constants.BLOCK_SIZE);
+            bm.registerBlock(i, localBuffer);
+        }
+
+        assertFalse(bm.isFullyHashed());
+        assertNull(bm.pieceHash());
+
+        // completing the piece makes the real hash available again
+        buffer.position((Constants.BLOCKS_PER_PIECE - 1) * (int) Constants.BLOCK_SIZE);
+        ByteBuffer last = buffer.slice();
+        last.limit((int) Constants.BLOCK_SIZE);
+        bm.registerBlock(Constants.BLOCKS_PER_PIECE - 1, last);
+
+        assertTrue(bm.isFullyHashed());
+        assertEquals(pieceHash, bm.pieceHash());
+    }
+
+    /**
+     * Blocks arriving out of order leave a hole: the hasher stops at the gap, so no hash
+     * can be produced until the missing block turns up.
+     */
+    @Test
+    public void testHoleInPieceProducesNoHash() {
+        BlockManager bm = new BlockManager(0, Constants.BLOCKS_PER_PIECE);
+
+        // skip block 1 entirely
+        for (int i = 0; i < Constants.BLOCKS_PER_PIECE; ++i) {
+            if (i == 1) continue;
+            buffer.position(i * (int) Constants.BLOCK_SIZE);
+            ByteBuffer localBuffer = buffer.slice();
+            localBuffer.limit((int) Constants.BLOCK_SIZE);
+            bm.registerBlock(i, localBuffer);
+        }
+
+        assertFalse(bm.isFullyHashed());
+        assertNull(bm.pieceHash());
+    }
 }

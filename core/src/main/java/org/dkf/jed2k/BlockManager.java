@@ -55,13 +55,36 @@ public class BlockManager {
         return freeBuffers;
     }
 
+    /**
+     * @return the piece's MD4, or null when the piece was not hashed in full
+     * <p>
+     * The hasher is fed incrementally by registerBlock(), and only over blocks that
+     * arrive contiguously from lastHashedBlock + 1. That every block eventually went
+     * through it used to be guarded by an assertion alone - and assertions are off on
+     * Android, so a piece missing blocks silently digested a partial byte stream and
+     * handed the result back as if it were the piece hash.
+     */
     public Hash pieceHash() {
         if (pieceHash == null) {
-            assert(lastHashedBlock == buffers.length - 1);
+            if (lastHashedBlock != buffers.length - 1) {
+                log.error("piece {} hash requested with only {} of {} blocks hashed, refusing to digest a partial piece"
+                        , piece
+                        , lastHashedBlock + 1
+                        , buffers.length);
+                return null;
+            }
+
             pieceHash = Hash.fromBytes(hasher.digest());
         }
 
         return pieceHash;
+    }
+
+    /**
+     * @return true when every block of the piece has been fed to the hasher
+     */
+    public boolean isFullyHashed() {
+        return lastHashedBlock == buffers.length - 1;
     }
 
     public int getPieceIndex() {

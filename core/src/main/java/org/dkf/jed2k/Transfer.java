@@ -143,7 +143,25 @@ public class Transfer {
      * @param rd resume data
      */
     void restore(final TransferResumeData rd) throws JED2KException {
-        setHashSet(this.hash, rd.hashes);
+        // A hash set arriving over the wire is checked in
+        // PeerConnection.onClientHashSetAnswer(): it must hash down to the file hash and
+        // have one entry per piece, otherwise the peer is dropped with WRONG_HASHSET.
+        // The resume path used to hand rd.hashes straight to setHashSet() with none of
+        // that, so a hash set that was persisted truncated, half-written or belonging to
+        // another file was trusted for the rest of the transfer - and it is the thing
+        // every later piece is verified against.
+        //
+        // Dropping a suspect set costs one hash set request to a peer, which then goes
+        // through the validated path above. Until it arrives onPieceHashCompleted()
+        // refuses to accept pieces, so nothing unverified slips through in the meantime.
+        if (!rd.hashes.isEmpty() && isValidHashSet(rd.hashes)) {
+            setHashSet(this.hash, rd.hashes);
+        } else if (!rd.hashes.isEmpty()) {
+            log.error("{} resume data carries a hash set of {} hashes that does not match the file hash for {} pieces, dropping it"
+                    , this.hash
+                    , rd.hashes.size()
+                    , numPieces);
+        }
 
         for(int i = 0; i < rd.pieces.size(); ++i) {
             if (rd.pieces.getBit(i)) picker.restoreHave(i);
@@ -362,6 +380,17 @@ public class Transfer {
         session.pushAlert(new TransferResumedAlert(hash));
     }
 
+    /**
+     * Same check PeerConnection.onClientHashSetAnswer() runs before trusting a hash set
+     * from a peer: it must have one hash per piece and hash down to this transfer's file
+     * hash.
+     */
+    boolean isValidHashSet(final Collection<Hash> hs) {
+        if (hs == null || hs.isEmpty()) return false;
+        if (hs.size() != numPieces) return false;
+        return this.hash.equals(Hash.fromHashSet(hs));
+    }
+
     void setHashSet(final Hash hash, final AbstractCollection<Hash> hs) {
         if (hashSet.isEmpty()) {
             log.debug("{} getHash set received {}", getHash(), hs.size());
@@ -420,11 +449,44 @@ public class Transfer {
         }
     }
 
+    /**
+     * Verification gate for a completed piece. It must fail closed: anything we cannot
+     * positively verify gets thrown away and downloaded again.
+     * <p>
+     * It used to fail *open* in two ways, both reachable when resuming a transfer, and
+     * both guarded only by assertions - which are disabled on Android:
+     * <p>
+     * - `hash != null && ...` meant a null computed hash short-circuited the comparison
+     *   and fell into the else branch, so the piece was accepted with no verification at
+     *   all. BlockManager.pieceHash() returns null exactly when the piece could not be
+     *   hashed in full, which is precisely the case that needed rejecting.
+     * <p>
+     * - hashSet.get(pieceIndex) assumed the hash set covers the piece. Resume data saved
+     *   before the hash set arrived from a peer stores an empty set, and setHashSet()
+     *   keeps it empty, so this threw IndexOutOfBoundsException from a disk-thread
+     *   callback instead of rejecting the piece.
+     * <p>
+     * Together these let a resumed transfer accept unverified pieces, which finishes very
+     * quickly - nothing is ever re-downloaded - and produces an unreadable file.
+     */
     public void onPieceHashCompleted(final int pieceIndex, final Hash hash) {
-        assert hash != null;
-        assert hashSet.size() > pieceIndex;
+        if (hash == null) {
+            log.error("piece {} was not hashed completely, restore it for downloading", pieceIndex);
+            picker.restorePiece(pieceIndex);
+            needSaveResumeData = true;
+            return;
+        }
 
-        if (hash != null && (hashSet.get(pieceIndex).compareTo(hash) != 0)) {
+        if (pieceIndex < 0 || pieceIndex >= hashSet.size()) {
+            log.error("piece {} can not be verified, hash set holds {} hashes, restore it for downloading"
+                    , pieceIndex
+                    , hashSet.size());
+            picker.restorePiece(pieceIndex);
+            needSaveResumeData = true;
+            return;
+        }
+
+        if (hashSet.get(pieceIndex).compareTo(hash) != 0) {
             log.error("restore piece {} due to expected getHash {} != {} was calculated"
                     , pieceIndex
                     , hashSet.get(pieceIndex)
