@@ -305,18 +305,31 @@ public class Transfer {
 
 	void secondTick(final Statistics accumulator, long tickIntervalMS) {
 
-        if (!isPaused() && !isAborted() && !isFinished() && connections.isEmpty()) {
+        // Sources were only ever requested while connections.isEmpty(), so the moment a
+        // single peer attached - including one that merely put us in its upload queue and
+        // never sent a byte - the transfer stopped looking for sources on both the server
+        // and KAD, permanently. That is the main reason a download settles on one or two
+        // slow peers and stays there.
+        //
+        // Keep asking while there is room for more peers, and back off once we have some:
+        // ed2k servers ban clients that re-ask for the same file too often, so the short
+        // interval is reserved for a transfer that has nothing at all.
+        final boolean wantsMoreSources = connections.size() < session.settings.sessionConnectionsLimit;
 
-            if (nextTimeForSourcesRequest < Time.currentTime()) {
+        if (!isPaused() && !isAborted() && !isFinished() && wantsMoreSources) {
+            final boolean starving = connections.isEmpty();
+            final long now = Time.currentTime();
+
+            if (nextTimeForSourcesRequest < now) {
                 log.debug("[transfer] request peers on server {}", hash);
                 session.sendSourcesRequest(hash, size);
-                nextTimeForSourcesRequest = Time.currentTime() + Time.minutes(1);
+                nextTimeForSourcesRequest = now + (starving ? Time.minutes(1) : Time.minutes(20));
             }
 
-            if (nextTimeForDhtSourcesRequest < Time.currentTime()) {
+            if (nextTimeForDhtSourcesRequest < now) {
                 log.debug("[transfer] request peers on KAD {}", hash);
                 session.sendDhtSourcesRequest(hash, size, this);
-                nextTimeForDhtSourcesRequest = Time.currentTime() + Time.minutes(10);
+                nextTimeForDhtSourcesRequest = now + (starving ? Time.minutes(10) : Time.minutes(15));
             }
         }
 

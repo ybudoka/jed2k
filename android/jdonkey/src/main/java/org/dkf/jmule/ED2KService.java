@@ -1309,8 +1309,20 @@ public class ED2KService extends JobIntentService {
 
     public void setServerPing(boolean value) { settings.serverPingTimeout = value?60:0; }
 
-    public void setMaxPeerListSize(int maxSize) {
-        settings.maxPeerListSize = maxSize;
+    /**
+     * Backs the "Max Total Connections" preference.
+     * <p>
+     * It used to assign settings.maxPeerListSize, a field nothing in the core ever reads
+     * - Policy caps its peer list with its own static MAX_PEER_LIST_SIZE - so the setting
+     * did nothing at all, whatever the user picked. The real cap on simultaneous peer
+     * connections is settings.sessionConnectionsLimit, which stayed hardcoded.
+     */
+    public void setMaxConnections(int maxConnections) {
+        if (maxConnections <= 0) return;
+        settings.sessionConnectionsLimit = maxConnections;
+        // kept in sync so the value reported by Settings.toString() is not misleading
+        settings.maxPeerListSize = Math.max(maxConnections, settings.maxPeerListSize);
+        log.info("[ED2K service] max simultaneous connections set to {}", maxConnections);
     }
 
     public void setUserAgent(Hash hash) {

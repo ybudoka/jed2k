@@ -1049,10 +1049,22 @@ public class PeerConnection extends Connection {
      * request new blocks from associated transfer's picker
      */
     void requestBlocks() {
-        if (transfer == null || !transfer.hasPicker() || transferringData || !downloadQueue.isEmpty()) return;
+        if (transfer == null || !transfer.hasPicker() || transferringData) return;
+
+        // Top the queue up as soon as there is room in it.
+        //
+        // This used to bail out unless the queue was completely empty, which turned the
+        // download into stop-and-wait: ask for three blocks, then sit idle for a full
+        // round trip while the last one arrived before asking for anything else. On a
+        // high latency link - mobile especially - that idle gap is most of the transfer
+        // time. Refilling on every completed block keeps REQUEST_QUEUE_SIZE blocks in
+        // flight continuously, which is what the constant was meant to express.
+        final int room = Constants.REQUEST_QUEUE_SIZE - downloadQueue.size();
+        if (room <= 0) return;
+
         LinkedList<PieceBlock> blocks = new LinkedList<PieceBlock>();
         PiecePicker picker = transfer.getPicker();
-        picker.pickPieces(blocks, Constants.REQUEST_QUEUE_SIZE, getPeer(), speed());
+        picker.pickPieces(blocks, room, getPeer(), speed());
         RequestParts64 reqp = new RequestParts64(transfer.getHash());
 
         while(!blocks.isEmpty() && downloadQueue.size() < Constants.REQUEST_QUEUE_SIZE) {
@@ -1067,7 +1079,11 @@ public class PeerConnection extends Connection {
         if (!reqp.isEmpty()) {
             write(reqp);
         }
-        else {
+        else if (downloadQueue.isEmpty()) {
+            // The picker had nothing for us and nothing is still in flight, so this peer
+            // is of no further use. Note the downloadQueue check: now that we refill a
+            // partially full queue, "no new blocks" on its own is an ordinary end-game
+            // condition and must not tear down a connection that is still delivering.
             close(ErrorCode.NO_ERROR);
         }
     }

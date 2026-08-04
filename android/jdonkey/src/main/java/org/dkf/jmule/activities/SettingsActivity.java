@@ -200,7 +200,7 @@ public class SettingsActivity extends PreferenceActivity {
                 @Override
                 public boolean onPreferenceChange(Preference preference, Object newValue) {
                     LOG.info("explicit setup total connections to {}", (int)newValue);
-                    Engine.instance().setMaxPeersCount((int)newValue);
+                    Engine.instance().setMaxConnections((int)newValue);
                     Engine.instance().configureServices();
                     return true;
                 }
@@ -466,7 +466,7 @@ public class SettingsActivity extends PreferenceActivity {
             protected void onPreExecute() {
                 LOG.info("listen port {}", ConfigurationManager.instance().getLong(Constants.PREF_KEY_LISTEN_PORT));
                 Engine.instance().setListenPort((int)ConfigurationManager.instance().getLong(Constants.PREF_KEY_LISTEN_PORT));
-                Engine.instance().setMaxPeersCount((int)ConfigurationManager.instance().getLong(Constants.PREF_KEY_TRANSFER_MAX_TOTAL_CONNECTIONS));
+                Engine.instance().setMaxConnections((int)ConfigurationManager.instance().getLong(Constants.PREF_KEY_TRANSFER_MAX_TOTAL_CONNECTIONS));
                 Engine.instance().setNickname(ConfigurationManager.instance().getString(Constants.PREF_KEY_NICKNAME));
                 Engine.instance().setReconnectToServer(ConfigurationManager.instance().getBoolean(Constants.PREF_KEY_RECONNECT_TO_SERVER));
                 Engine.instance().setServerPing(ConfigurationManager.instance().getBoolean(Constants.PREF_KEY_PING_SERVER));
