@@ -1,55 +1,82 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Server row.
 
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@color/body_background_gray">
+  Reworked: the row had no padding at all, the four text lines all used the same
+  "SubItem.Title" style so name / description / stats carried identical visual weight,
+  and the connection icon had no android:src, leaving a hole in the layout until
+  populateView() assigned one. The stats lines are now secondary text and the icon
+  starts out in the disconnected state.
+
+  The background was body_background_gray, an opaque fill that painted over the row
+  separator drawn by listview_item_background and left the list looking like one slab.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/body_background_white"
+    android:baselineAligned="false"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingBottom="12dp"
+    android:paddingLeft="16dp"
+    android:paddingRight="16dp"
+    android:paddingTop="12dp">
 
     <ImageView
         android:id="@+id/view_preference_servers_list_item_icon"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerVertical="true"
-        android:layout_marginBottom="12dp"
-        android:layout_marginLeft="20dp"
-        android:layout_marginRight="22dp"
-        android:layout_marginTop="12dp"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_gravity="center_vertical"
+        android:layout_marginEnd="16dp"
+        android:layout_marginRight="16dp"
+        android:adjustViewBounds="true"
+        android:alpha="0.4"
         android:contentDescription="@null"
-        android:adjustViewBounds="true"/>
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_flash_off_black_24dp" />
 
-    <TextView
-        android:id="@+id/view_preference_servers_list_item_label"
-        style="@style/TransfersList.SubItem.Title"
-        android:layout_width="match_parent"
+    <LinearLayout
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_toRightOf="@id/view_preference_servers_list_item_icon"
-        android:text="@string/dummy_title" />
+        android:layout_weight="1"
+        android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/view_preference_servers_list_item_description"
-        style="@style/TransfersList.SubItem.Title"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/view_preference_servers_list_item_label"
-        android:layout_toRightOf="@id/view_preference_servers_list_item_icon"
-        android:text="@string/dummy_summary" />
+        <TextView
+            android:id="@+id/view_preference_servers_list_item_label"
+            style="@style/ListItemTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="middle"
+            tools:text="@string/dummy_title" />
 
-    <TextView
-        android:id="@+id/view_server_details"
-        style="@style/TransferListItemSize"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/view_preference_servers_list_item_description"
-        android:layout_toRightOf="@id/view_preference_servers_list_item_icon"
-        android:text="@string/NA" />
+        <TextView
+            android:id="@+id/view_preference_servers_list_item_description"
+            style="@style/ListItemExt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            tools:text="@string/dummy_summary" />
 
-    <TextView
-        android:id="@+id/view_server_user_id"
-        style="@style/TransferListItemSize"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/view_server_details"
-        android:layout_toRightOf="@id/view_preference_servers_list_item_icon"
-        android:text="@string/NA" />
+        <TextView
+            android:id="@+id/view_server_details"
+            style="@style/TransferListItemSize"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            tools:text="@string/NA" />
 
-</RelativeLayout>
+        <TextView
+            android:id="@+id/view_server_user_id"
+            style="@style/TransferListItemSize"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:visibility="gone"
+            tools:text="@string/NA"
+            tools:visibility="visible" />
+    </LinearLayout>
+
+</LinearLayout>

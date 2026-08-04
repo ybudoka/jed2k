@@ -79,9 +79,12 @@ public abstract class AbstractListAdapter<T> extends BaseAdapter implements Filt
         this.checkboxOnCheckedChangeListener = new CheckboxOnCheckedChangeListener();
         this.radioButtonCheckedChangeListener = new RadioButtonOnCheckedChangeListener();
         this.dialogs = new ArrayList<>();
-        this.list = (list==null || list.equals(Collections.emptyList())) ? new ArrayList<T>() : list;
+        this.list = (list == null || list.isEmpty()) ? new ArrayList<T>() : list;
         this.checked = checked;
-        this.visualList = list;
+        // visualList must alias the sanitized, mutable this.list - aliasing the raw
+        // constructor argument left it null (or immutable, for Collections.emptyList())
+        // and every later add/remove blew up or silently did nothing.
+        this.visualList = this.list;
     }
 
     public AbstractListAdapter(Context context, int viewItemId, List<T> list) {
@@ -97,7 +100,10 @@ public abstract class AbstractListAdapter<T> extends BaseAdapter implements Filt
     }
 
     public boolean hasStableIds() {
-        return true;
+        // getItemId() returns the position, which changes whenever the list is
+        // re-sorted or filtered. Claiming the ids are stable made the framework
+        // reuse rows for the wrong items.
+        return false;
     }
 
     public boolean areAllItemsEnabled() {
@@ -193,10 +199,10 @@ public abstract class AbstractListAdapter<T> extends BaseAdapter implements Filt
     }
 
     public void setList(List<T> list) {
-        this.list = list.equals(Collections.emptyList()) ? new ArrayList<T>() : list;
+        this.list = (list == null || list.isEmpty()) ? new ArrayList<T>() : list;
         this.visualList = this.list;
         this.checked.clear();
-        notifyDataSetInvalidated();
+        notifyDataSetChanged();
     }
 
     private void addList(List<T> g, boolean checked) {
@@ -604,8 +610,8 @@ public abstract class AbstractListAdapter<T> extends BaseAdapter implements Filt
         @SuppressWarnings("unchecked")
         @Override
         protected void publishResults(CharSequence constraint, FilterResults results) {
-            adapter.visualList = (List<T>) results.values;
-            notifyDataSetInvalidated();
+            adapter.visualList = (results.values != null) ? (List<T>) results.values : new ArrayList<T>();
+            notifyDataSetChanged();
         }
     }
 

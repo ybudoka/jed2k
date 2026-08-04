@@ -23,6 +23,7 @@
 
     <!-- non HTML tags. -->
     <string name="app_name">Mule on Android</string>
+    <string name="mule_running">Running in the background</string>
     <string name="activity_preferences_name">Settings</string>
     <string name="exit">Exit</string>
     <string name="search_label">Search</string>

@@ -23,7 +23,6 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Handler;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -75,12 +74,8 @@ public class TransfersFragment extends AbstractFragment implements TimerObserver
     private TransferStatus selectedStatus;
     private TimerSubscription subscription;
     private int delayedDHTUpdateTimeElapsed = 0;
-    private boolean isVPNactive;
     private static boolean firstTimeShown = true;
-    private Handler vpnRichToastHandler;
     private int totalDhtNodes = -1;
-
-    private boolean showTorrentSettingsOnClick;
 
     public TransfersFragment() {
         super(R.layout.fragment_transfers);
@@ -88,7 +83,6 @@ public class TransfersFragment extends AbstractFragment implements TimerObserver
         this.buttonAddTransferListener = new ButtonAddTransferListener(this);
         this.buttonMenuListener = new ButtonMenuListener(this);
         selectedStatus = TransferStatus.ALL;
-        vpnRichToastHandler = new Handler();
     }
 
     @Override
@@ -120,7 +114,10 @@ public class TransfersFragment extends AbstractFragment implements TimerObserver
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        subscription.unsubscribe();
+        if (subscription != null) {
+            subscription.unsubscribe();
+            subscription = null;
+        }
     }
 
     @Override
@@ -139,6 +136,12 @@ public class TransfersFragment extends AbstractFragment implements TimerObserver
 
     @Override
     public void onTime() {
+        // the timer keeps ticking after the fragment detaches; touching views or
+        // getString() at that point threw NPE / IllegalStateException
+        if (!isAdded() || getView() == null) {
+            return;
+        }
+
         if (adapter != null) {
             List<Transfer> transfers = filter(TransferManager.instance().getTransfers(), selectedStatus);
             Collections.sort(transfers, transferComparator);
@@ -167,9 +170,12 @@ public class TransfersFragment extends AbstractFragment implements TimerObserver
     }
 
     private void updateStatusBar(String sDown, String sUp, int downloads, int uploads) {
+        if (textDownloads == null || textUploads == null || textDht == null) {
+            return;
+        }
         textDownloads.setText(downloads + " @ " + sDown);
         textUploads.setText(uploads + " @ " + sUp);
-        textDht.setText(getString(R.string.dht_nodes, (totalDhtNodes>=0)?new Integer(totalDhtNodes).toString():"???"));
+        textDht.setText(getString(R.string.dht_nodes, (totalDhtNodes >= 0) ? Integer.toString(totalDhtNodes) : "???"));
     }
 
     @Override
@@ -267,6 +273,9 @@ public class TransfersFragment extends AbstractFragment implements TimerObserver
     public void initStorageRelatedRichNotifications(View v) {
         if (v == null) {
             v = getView();
+        }
+        if (v == null) {
+            return;
         }
         RichNotification sdCardNotification = findView(v, R.id.fragment_transfers_sd_card_notification);
         sdCardNotification.setVisibility(View.GONE);
@@ -429,10 +438,10 @@ public class TransfersFragment extends AbstractFragment implements TimerObserver
 
     private void startTransferFromURL() {
         String url = addTransferUrlTextView.getText();
-        if (url != null && !url.isEmpty() && (url.startsWith("ed2k"))) {
+        if (url != null && url.trim().startsWith("ed2k")) {
             toggleAddTransferControls();
-            if (url.startsWith("ed2k")) {
-                if (Engine.instance().startDownload(url) != null) UIUtils.showLongMessage(getActivity(), R.string.torrent_url_added);
+            if (Engine.instance().startDownload(url.trim()) != null) {
+                UIUtils.showLongMessage(getActivity(), R.string.torrent_url_added);
             }
             addTransferUrlTextView.setText("");
         } else {
@@ -441,18 +450,17 @@ public class TransfersFragment extends AbstractFragment implements TimerObserver
     }
 
     public void startTransferFromLink(final String url) {
-        if (url != null && !url.isEmpty() && (url.startsWith("ed2k"))) {
-            if (url.startsWith("ed2k")) {
-                if (Engine.instance().isStarted()) {
-                    if (Engine.instance().startDownload(url) != null)
-                        UIUtils.showLongMessage(getActivity(), R.string.torrent_url_added);
-                } else {
-                    UIUtils.showInformationDialog(getActivity()
-                            , R.string.add_transfer_session_stopped_body
-                            , R.string.add_transfer_session_stopped_title
-                            ,false
-                            , null);
+        if (url != null && url.startsWith("ed2k")) {
+            if (Engine.instance().isStarted()) {
+                if (Engine.instance().startDownload(url) != null) {
+                    UIUtils.showLongMessage(getActivity(), R.string.torrent_url_added);
                 }
+            } else {
+                UIUtils.showInformationDialog(getActivity()
+                        , R.string.add_transfer_session_stopped_body
+                        , R.string.add_transfer_session_stopped_title
+                        , false
+                        , null);
             }
         } else {
             UIUtils.showLongMessage(getActivity(), R.string.please_enter_valid_url);

@@ -86,29 +86,25 @@ public abstract class SearchResultListAdapter extends AbstractListAdapter<Search
         moreResults = hasMoreResults;
         list.addAll(entries);
         Collections.sort(list, Collections.reverseOrder(sourcesCountComparator));
-        visualList.addAll(list);
-        notifyDataSetChanged();
+        // visualList used to be fed with addAll(list). When no media filter is active
+        // visualList *is* list, so every batch of results doubled the backing list and
+        // the user saw each hit twice, then four times, then eight...
+        filter();
     }
 
 
     @Override
     protected void populateView(View view, final SearchEntry entry) {
-        maybeMarkTitleOpened(view, entry);
         populateFilePart(view, entry);
     }
 
     public void removeEntry(SearchEntry searchEntry) {
         boolean removed = list.remove(searchEntry);
-        boolean removed2 = visualList.remove(searchEntry);
-        log.info("item blocked {} / {}", removed, removed2);
+        if (visualList != list) {
+            visualList.remove(searchEntry);
+        }
+        log.info("item blocked {}", removed);
         notifyDataSetChanged();
-    }
-
-    private void maybeMarkTitleOpened(View view, SearchEntry se) {
-        int clickedColor = getContext().getResources().getColor(R.color.browse_peer_listview_item_inactive_foreground);
-        int unclickedColor = getContext().getResources().getColor(R.color.app_text_primary);
-        TextView title = findView(view, R.id.view_bittorrent_search_result_list_item_title);
-        //title.setTextColor(LocalSearchEngine.instance().hasBeenOpened(sr) ? clickedColor : unclickedColor);
     }
 
     private void populateFilePart(View view, final SearchEntry entry) {
@@ -134,11 +130,12 @@ public abstract class SearchResultListAdapter extends AbstractListAdapter<Search
         extra.setText(FilenameUtils.getExtension(entry.getFileName()));
 
         TextView seeds = findView(view, R.id.view_bittorrent_search_result_list_item_text_seeds);
-        String strSeeds = view.getContext().getResources().getString(R.string.search_item_sources);
-        seeds.setText(String.format(strSeeds, entry.getSources()));
+        seeds.setText(view.getContext().getString(R.string.search_item_sources, entry.getSources()));
         TextView completeSources = findView(view, R.id.view_bittorrent_search_result_list_item_text_comp_percent);
-        String formatCompleteSources = getContext().getString(R.string.complete_sources);
-        completeSources.setText(String.format(formatCompleteSources, entry.getSources()!=0?entry.getCompleteSources()*100/entry.getSources():0) + "%");
+        int completePercent = (entry.getSources() != 0)
+                ? (int) (entry.getCompleteSources() * 100L / entry.getSources())
+                : 0;
+        completeSources.setText(view.getContext().getString(R.string.complete_sources, completePercent) + "%");
 
         TextView sourceLink = findView(view, R.id.view_bittorrent_search_result_list_item_text_source);
 
@@ -151,7 +148,11 @@ public abstract class SearchResultListAdapter extends AbstractListAdapter<Search
 
     @Override
     protected void onItemClicked(View v) {
-        SearchEntry se = (SearchEntry) v.getTag();
+        Object tag = v.getTag();
+        if (!(tag instanceof SearchEntry)) {
+            return;
+        }
+        SearchEntry se = (SearchEntry) tag;
         if (!Engine.instance().hasTransfer(se.getHash())) {
             searchResultClicked(se);
         }
@@ -161,7 +162,7 @@ public abstract class SearchResultListAdapter extends AbstractListAdapter<Search
 
     private void filter() {
         this.visualList = filter(list);
-        notifyDataSetInvalidated();
+        notifyDataSetChanged();
     }
 
     public List<SearchEntry> filter(List<SearchEntry> results) {
@@ -180,6 +181,10 @@ public abstract class SearchResultListAdapter extends AbstractListAdapter<Search
     }
 
     private boolean accept(SearchEntry se, MediaType mt) {
+        // no media filter chosen yet -> show everything instead of an empty list
+        if (fileType == NO_FILE_TYPE) {
+            return true;
+        }
         return (mt != null && mt.getId() == fileType) ||
                 (mt == null && fileType == Constants.FILE_TYPE_OTHERS);
     }
@@ -233,11 +238,12 @@ public abstract class SearchResultListAdapter extends AbstractListAdapter<Search
 
     void populateMenuActions(SearchEntry entry, List<MenuAction> actions) {
         // search more is available only on server source
-        if (entry.getSource() != SearchEntry.SOURCE_SERVER) return;
-        // HACK!
-        // TODO - replace it with appropriate solution
-        MainActivity a = (MainActivity)getContext();
-        if (a != null) {
+        if (entry == null || entry.getSource() != SearchEntry.SOURCE_SERVER) return;
+        // the adapter is not guaranteed to be hosted by MainActivity, a blind cast
+        // turned a missing menu into a ClassCastException
+        if (!(getContext() instanceof MainActivity)) return;
+        MainActivity a = (MainActivity) getContext();
+        if (a.getSearchFragment() != null) {
             actions.add(new SearchMoreAction(getContext(), a.getSearchFragment()));
             actions.add(new BlockSearchAction(getContext(), a.getSearchFragment(), entry));
         }
@@ -245,9 +251,12 @@ public abstract class SearchResultListAdapter extends AbstractListAdapter<Search
 
     protected MenuAdapter getMenuAdapter(View view) {
         Object tag = view.getTag();
+        if (!(tag instanceof SearchEntry)) {
+            return null;
+        }
         String title = "";
         List<MenuAction> items = new ArrayList<>();
-        populateMenuActions((SearchEntry)tag, items);
+        populateMenuActions((SearchEntry) tag, items);
         return items.size() > 0 ? new MenuAdapter(view.getContext(), title, items) : null;
     }
 

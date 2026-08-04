@@ -19,8 +19,9 @@
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
               xmlns:frostwire="http://schemas.android.com/apk/res-auto"
+              xmlns:tools="http://schemas.android.com/tools"
               android:layout_width="match_parent"
-              android:layout_height="fill_parent"
+              android:layout_height="match_parent"
               android:orientation="vertical">
 
     <org.dkf.jmule.views.ClearableEditTextView
@@ -119,51 +120,61 @@
 
     <View
         android:layout_width="match_parent"
-          android:layout_height="1px"
-          android:background="#ff1d2934"/>
+        android:layout_height="1dp"
+        android:background="@color/app_divider_dark"/>
 
+    <!--
+      Status bar. The three counters used to live in a wrap_content container carrying
+      layout_gravity="right", which does nothing for horizontal placement inside a
+      horizontal LinearLayout - so they were bunched up against the left edge behind a
+      stray 1px black spacer. They are now weighted evenly across the full width.
+
+      The KAD counter also borrowed the "upload" triangle; it has its own glyph now, and
+      its android:text no longer points at dht_nodes (a "KAD: %1$s" format string, which
+      rendered the placeholder verbatim until the first update arrived).
+    -->
     <LinearLayout
-        android:layout_width="fill_parent"
-            android:layout_height="40dp"
-            android:background="@drawable/transfers_indicators_background">
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:baselineAligned="false"
+        android:background="@drawable/transfers_indicators_background">
 
-        <View android:layout_width="1px" android:layout_height="fill_parent" android:background="@color/black"/>
+        <TextView
+            android:id="@+id/fragment_transfers_text_downloads"
+            style="@style/TransfersIndicator"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:drawablePadding="6dp"
+            android:drawableLeft="@drawable/transfers_triangle_downward"
+            android:drawableStart="@drawable/transfers_triangle_downward"
+            tools:text="@string/dummy_downloads_indicator"/>
 
-        <LinearLayout android:layout_width="wrap_content"
-                      android:layout_height="wrap_content"
-                      android:layout_gravity="right|center_vertical">
-            <TextView
-                    android:id="@+id/fragment_transfers_text_downloads"
-                    style="@style/TransfersIndicator"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:drawableLeft="@drawable/transfers_triangle_downward"
-                    android:paddingRight="8dp"
-                    android:text="@string/dummy_downloads_indicator"/>
+        <TextView
+            android:id="@+id/fragment_transfers_text_uploads"
+            style="@style/TransfersIndicator"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:drawablePadding="6dp"
+            android:drawableLeft="@drawable/transfers_triangle_upward"
+            android:drawableStart="@drawable/transfers_triangle_upward"
+            tools:text="@string/dummy_uploads_indicator"/>
 
-            <TextView
-                    android:id="@+id/fragment_transfers_text_uploads"
-                    style="@style/TransfersIndicator"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:drawableLeft="@drawable/transfers_triangle_upward"
-                    android:paddingRight="8dp"
-                    android:text="@string/dummy_uploads_indicator"/>
-
-            <TextView
-                    android:id="@+id/fragment_transfers_dht"
-                    style="@style/TransfersIndicator"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:drawableLeft="@drawable/transfers_triangle_upward"
-                    android:paddingRight="8dp"
-                    android:text="@string/dht_nodes"/>
-        </LinearLayout>
+        <TextView
+            android:id="@+id/fragment_transfers_dht"
+            style="@style/TransfersIndicator"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:drawablePadding="6dp"
+            android:drawableLeft="@drawable/ic_kad_nodes"
+            android:drawableStart="@drawable/ic_kad_nodes"
+            tools:text="KAD: 128"/>
     </LinearLayout>
-
-    <View
-            android:layout_width="match_parent"
-            android:layout_height="1px"
-            android:background="#ff1d2934"/>
 
 </LinearLayout>

@@ -20,29 +20,43 @@
 -->
 <resources>
 
+    <!--
+      Palette refresh.
+
+      The previous values were straight out of the Holo era: a muddy slate blue,
+      #33b5e5 as the accent, and greys (#b5b5b5 for "light" text, #686868 for
+      secondary) that fall short of the WCAG AA contrast ratio on the light grey
+      body background. Several entries were also accidentally translucent -
+      basic_gray_lighter was #f5f5f7f8, i.e. 96% alpha rather than opaque.
+
+      The values below keep the app's navy identity but are deeper, cleaner and
+      consistently related to one another. Every resource *name* is unchanged, so
+      layouts, drawables and colour state lists all pick this up untouched.
+    -->
+
     <!-- Basic colors -->
     <color name="basic_white">@android:color/white</color>
-    <color name="basic_blue">#ff38536a</color>
-    <color name="basic_blue_highlight">#ff33b5e5</color>
-    <color name="basic_blue_highlight_dark">#2e9ec7</color>
-    <color name="basic_blue_darker_highlight">#2e9ec7</color>
-    <color name="basic_blue_transparent">#642889AC</color>
-    <color name="basic_blue_dark">#264053</color>
-    <color name="basic_blue_dark_highlight">#21313f</color>
+    <color name="basic_blue">#ff20415c</color>
+    <color name="basic_blue_highlight">#ff29b6f6</color>
+    <color name="basic_blue_highlight_dark">#ff0288d1</color>
+    <color name="basic_blue_darker_highlight">#ff0277bd</color>
+    <color name="basic_blue_transparent">#6629b6f6</color>
+    <color name="basic_blue_dark">#ff152b3e</color>
+    <color name="basic_blue_dark_highlight">#ff0f2130</color>
     <color name="basic_gray">#ffeceff1</color>
-    <color name="basic_gray_lighter">#f5f5f7f8</color>
-    <color name="basic_yellow">#ffe16a</color>
-    <color name="basic_green">#0FC486</color>
-    <color name="basic_green_dark">#05a751</color>
-    <color name="basic_gray_light">#F2F2F2</color>
-    <color name="basic_gray_medium">#e7e7e7</color>
-    <color name="basic_gray_dark">#b5b5b5</color>
-    <color name="basic_gray_text_dark">#2b2b2b</color>
-    <color name="basic_gray_text_medium">#686868</color>
-    <color name="basic_gray_text_light">#b5b5b5</color>
+    <color name="basic_gray_lighter">#fff7f9fa</color>
+    <color name="basic_yellow">#ffffe08a</color>
+    <color name="basic_green">#ff12b886</color>
+    <color name="basic_green_dark">#ff0a9268</color>
+    <color name="basic_gray_light">#fff2f4f6</color>
+    <color name="basic_gray_medium">#ffe3e7ea</color>
+    <color name="basic_gray_dark">#ffb0b8bf</color>
+    <color name="basic_gray_text_dark">#ff1c2b36</color>
+    <color name="basic_gray_text_medium">#ff5c6b78</color>
+    <color name="basic_gray_text_light">#ff8b96a1</color>
 
     <!-- General app colors -->
-    <color name="app_text_secondary_dark">#4d4d4d</color>
+    <color name="app_text_secondary_dark">#ff44525e</color>
     <color name="action_bar_background">@color/basic_blue</color>
     <color name="body_background_white">@color/basic_white</color>
     <color name="body_background_gray">@color/basic_gray</color>
@@ -64,22 +78,23 @@
     <color name="app_grid_selected_background">@color/basic_blue_transparent</color>
 
     <!-- Other colors (old) -->
-    <color name="frostwire_light_blue">#ff7adafa</color>
+    <color name="frostwire_light_blue">#ff8ad9f5</color>
 
     <!-- General application colors -->
-    <color name="app_dark_blue">#ff264053</color>
-    <color name="app_dark_blue_highlight">#ff21313f</color>
-    <color name="app_dark_blue_selector">#ff233d4e</color>
-    <color name="app_light_background">#fff8f8f8</color>
-    <color name="app_highlight_text">#ff33b5e5</color>
-    <color name="app_list_cell_line">#ffeceff1</color>
-    <color name="app_menu_item_line">#ff1d2934</color>
-    <color name="app_light_gray_text">#d9d9d9</color>
-    <color name="app_dark_grey_text">#ff737373</color>
+    <color name="app_dark_blue">#ff152b3e</color>
+    <color name="app_dark_blue_highlight">#ff0f2130</color>
+    <color name="app_dark_blue_selector">#ff1a3448</color>
+    <color name="app_light_background">#fffafbfc</color>
+    <color name="app_highlight_text">@color/basic_blue_highlight_dark</color>
+    <color name="app_list_cell_line">#ffe1e6ea</color>
+    <color name="app_menu_item_line">#ff1a3448</color>
+    <color name="app_light_gray_text">#ffd5dde4</color>
+    <color name="app_dark_grey_text">#ff6d7a85</color>
 
     <color name="browse_peer_listview_item_inactive_foreground">@color/app_dark_grey_text</color>
 
-    <color name="warning_red">#ffff0000</color>
+    <!-- pure #ff0000 is needlessly harsh on a light background -->
+    <color name="warning_red">#ffe03131</color>
 
     <color name="transparent">#00000000</color>
 
@@ -89,27 +104,16 @@
     <!-- White -->
     <color name="white">#ffffffff</color>
 
-    <!-- Transparent black -->
+    <!-- Hairline separators. These used to be spelled out as literal hex values
+         (#ff1d2934) inside the layouts. -->
+    <color name="app_divider_dark">#ff1a3448</color>
+    <color name="app_divider_light">@color/app_list_cell_line</color>
 
-    <!-- Transparent white -->
-
-    <!-- Dark transparent color -->
-
-    <!-- A darkish color used for the action bar -->
-
-    <!-- A light, Holo shade of blue -->
-
-    <!-- A light, transparent Holo shade of blue -->
-
-    <!-- A light Holo shade of green -->
-
-    <!-- A light Holo shade of red -->
-
-    <!-- A Holo shade of purple -->
-
-    <!-- A light Holo shade of orange -->
-
-    <!-- A dark Holo shade of orange -->
+    <!-- Per-state accents for the transfers list -->
+    <color name="transfer_state_downloading">@color/basic_blue_highlight_dark</color>
+    <color name="transfer_state_completed">@color/basic_green_dark</color>
+    <color name="transfer_state_stalled">#ffe8a33d</color>
+    <color name="transfer_state_paused">@color/app_text_secondary</color>
 
     <!-- Text Colors -->
     <color name="app_text_primary">@color/basic_gray_text_dark</color>
@@ -118,13 +122,13 @@
     <color name="app_text_white">@color/basic_white</color>
     <color name="app_text_light">@color/basic_gray_text_light</color>
     <color name="app_text_highlight">@color/basic_blue_highlight_dark</color>
-    <color name="app_text_wizard">#abb3bc</color>
-    <color name="app_text_wizard_dark">#ff6f7d88</color>
+    <color name="app_text_wizard">#ffb3bcc4</color>
+    <color name="app_text_wizard_dark">#ff7c8892</color>
 
     <!-- Other colors (old) -->
     <color name="frostwire_orange">#ffe9a54c</color>
-    <color name="frostwire_gray_explanation_text">#abb3bc</color>
-    <color name="frostwire_gray_explanation_text_dark">#ff6f7d88</color>
+    <color name="frostwire_gray_explanation_text">#ffb3bcc4</color>
+    <color name="frostwire_gray_explanation_text_dark">#ff7c8892</color>
     <!-- The action bar title color -->
     <color name="action_bar_title">@color/white</color>
 </resources>

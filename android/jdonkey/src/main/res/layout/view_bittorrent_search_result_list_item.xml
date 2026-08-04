@@ -17,93 +17,125 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+  Rebuilt as nested LinearLayouts.
+
+  The previous RelativeLayout positioned both the "Ad" badge and the file size with
+  layout_below="@id/..._title", so the two occupied exactly the same slot and drew on
+  top of each other - only the fact that the badge is force-hidden from code kept that
+  invisible. The row also had no padding of its own, so the title butted straight up
+  against the icon on the left and the screen edge on the right, and the title was
+  wrap_content with no ellipsize, which clipped long file names mid-glyph.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@color/basic_white"
     android:baselineAligned="false"
-    android:orientation="horizontal" >
+    android:orientation="horizontal">
 
     <ImageView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
         android:contentDescription="@null"
-        android:paddingBottom="21dp"
-        android:paddingLeft="5dp"
-        android:paddingRight="5dp"
-        android:paddingTop="21dp"
+        android:paddingLeft="12dp"
+        android:paddingRight="12dp"
         android:scaleType="fitCenter"
         android:src="@drawable/download_icon" />
 
-    <RelativeLayout
-        android:layout_width="0dip"
+    <LinearLayout
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical"
         android:layout_weight="1"
-        android:background="@drawable/listview_item_press_background_selector">
+        android:background="@drawable/listview_item_press_background_selector"
+        android:orientation="vertical"
+        android:paddingBottom="12dp"
+        android:paddingRight="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="12dp">
 
         <TextView
             android:id="@+id/view_bittorrent_search_result_list_item_title"
             style="@style/ListItemTitle"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/dummy_title" />
+            android:ellipsize="middle"
+            tools:text="@string/dummy_title" />
 
         <TextView
             android:id="@+id/view_bittorrent_search_result_list_item_ad_indicator"
             style="@style/ListItemAd"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@id/view_bittorrent_search_result_list_item_title"
-            android:layout_marginBottom="4dp"
-            android:text="Ad" />
+            android:layout_marginTop="4dp"
+            android:text="Ad"
+            android:visibility="gone"
+            tools:ignore="HardcodedText" />
 
-        <TextView
-            android:id="@+id/view_bittorrent_search_result_list_item_file_size"
-            style="@style/ListItemSize"
-            android:layout_width="wrap_content"
+        <!-- size + extension -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_below="@id/view_bittorrent_search_result_list_item_title"
-            android:layout_marginRight="6dp"
-            android:text="@string/dummy_size" />
+            android:layout_marginTop="4dp"
+            android:orientation="horizontal">
 
-        <TextView
-            android:id="@+id/view_bittorrent_search_result_list_item_text_extra"
-            style="@style/ListItemExt"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignBaseline="@id/view_bittorrent_search_result_list_item_file_size"
-            android:layout_toRightOf="@id/view_bittorrent_search_result_list_item_file_size"
-            android:text="@string/dummy_extra" />
+            <TextView
+                android:id="@+id/view_bittorrent_search_result_list_item_file_size"
+                style="@style/ListItemSize"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:text="@string/dummy_size" />
 
-        <TextView
-            android:id="@+id/view_bittorrent_search_result_list_item_text_source"
-            style="@style/SearchResultListItemSource"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/view_bittorrent_search_result_list_item_file_size"
-            android:clickable="true"
-            android:text="@string/dummy_engine" />
+            <TextView
+                android:id="@+id/view_bittorrent_search_result_list_item_text_extra"
+                style="@style/ListItemExt"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="6dp"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                tools:text="@string/dummy_extra" />
+        </LinearLayout>
 
-        <TextView
-            android:id="@+id/view_bittorrent_search_result_list_item_text_seeds"
-            style="@style/ListItemExtra"
-            android:layout_width="wrap_content"
+        <!-- source + sources count + completion -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_alignBaseline="@id/view_bittorrent_search_result_list_item_text_source"
-            android:layout_marginLeft="6dp"
-            android:layout_toRightOf="@id/view_bittorrent_search_result_list_item_text_source"
-            android:text="@string/search_item_sources" />
-        <TextView
-            android:id="@+id/view_bittorrent_search_result_list_item_text_comp_percent"
-            style="@style/ListItemExtra"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignBaseline="@id/view_bittorrent_search_result_list_item_text_seeds"
-            android:layout_marginLeft="6dp"
-            android:layout_toRightOf="@id/view_bittorrent_search_result_list_item_text_seeds"
-            android:text="@string/complete_sources" />
-    </RelativeLayout>
+            android:layout_marginTop="3dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/view_bittorrent_search_result_list_item_text_source"
+                style="@style/SearchResultListItemSource"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:text="@string/dummy_engine" />
+
+            <TextView
+                android:id="@+id/view_bittorrent_search_result_list_item_text_seeds"
+                style="@style/ListItemExtra"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="8dp"
+                android:layout_marginStart="8dp"
+                tools:text="@string/search_item_sources" />
+
+            <TextView
+                android:id="@+id/view_bittorrent_search_result_list_item_text_comp_percent"
+                style="@style/ListItemExtra"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="8dp"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                tools:text="@string/complete_sources" />
+        </LinearLayout>
+
+    </LinearLayout>
 
 </LinearLayout>

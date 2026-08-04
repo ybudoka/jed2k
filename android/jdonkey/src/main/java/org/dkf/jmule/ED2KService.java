@@ -214,20 +214,41 @@ public class ED2KService extends JobIntentService {
      */
     public static void foregroundServiceStartForAndroidO(Service service) {
         if (Build.VERSION.SDK_INT >= 26) {
+            NotificationManager manager = (NotificationManager) service.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (manager == null) {
+                return;
+            }
+            createNotificationChannel(manager);
+
+            // A blank title/text produced an empty, permanently pinned notification.
+            // It also used its own id (1338) while the permanent status notification
+            // used ED2K_STATUS_NOTIFICATION, so the user got two entries in the shade.
+            Notification notification = new NotificationCompat.Builder(
+                    service,
+                    Constants.ED2K_NOTIFICATION_CHANNEL_ID).
+                    setSmallIcon(R.drawable.notification_mule).
+                    setContentTitle(service.getString(R.string.app_name)).
+                    setContentText(service.getString(R.string.mule_running)).
+                    setPriority(NotificationCompat.PRIORITY_LOW).
+                    setOngoing(true).
+                    build();
+            service.startForeground(ED2K_STATUS_NOTIFICATION, notification);
+        }
+    }
+
+    /**
+     * Single place where the channel is defined. It used to be recreated with three
+     * different importance levels from three call sites; only the first one ever
+     * took effect, so the actual importance depended on the call order.
+     */
+    private static void createNotificationChannel(NotificationManager manager) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     Constants.ED2K_NOTIFICATION_CHANNEL_ID,
                     "ED2K",
                     NotificationManager.IMPORTANCE_LOW);
-            ((NotificationManager) service.getSystemService(Context.NOTIFICATION_SERVICE)).
-                    createNotificationChannel(channel);
-
-            Notification notification = new NotificationCompat.Builder(
-                    service,
-                    Constants.ED2K_NOTIFICATION_CHANNEL_ID).
-                    setContentTitle("").
-                    setContentText("").
-                    build();
-            service.startForeground(1338, notification);
+            channel.setSound(null, null);
+            manager.createNotificationChannel(channel);
         }
     }
 
@@ -974,12 +995,7 @@ public class ED2KService extends JobIntentService {
             NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
             if (manager != null) {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    NotificationChannel channel = new NotificationChannel(Constants.ED2K_NOTIFICATION_CHANNEL_ID, "ED2K", NotificationManager.IMPORTANCE_MIN);
-                    channel.setSound(null, null);
-                    manager.createNotificationChannel(channel);
-                }
-
+                createNotificationChannel(manager);
                 manager.notify(ED2K_STATUS_NOTIFICATION, notificationObject);
             }
         } catch (Throwable e) {
@@ -1043,48 +1059,47 @@ public class ED2KService extends JobIntentService {
 
     private void buildNotification(final String title, final String summary, final String extra) {
         try {
-            Intent intentShowTransfers = new Intent(ACTION_SHOW_TRANSFERS);
-            if (!extra.isEmpty()) intentShowTransfers.putExtra(extra, true);
+            Context context = getApplicationContext();
 
-            /**
-             * Pending intents
-             */
-            PendingIntent openPending = PendingIntent.getActivity(getApplicationContext(), 0, intentShowTransfers, 0);
+            // This used to be an implicit `new Intent(ACTION_SHOW_TRANSFERS)` wrapped in a
+            // PendingIntent built with flags == 0. Both are rejected from Android 12 on
+            // (implicit PendingIntents are banned, and one of FLAG_IMMUTABLE/FLAG_MUTABLE
+            // is mandatory), so finishing a download threw IllegalArgumentException.
+            Intent intentShowTransfers = new Intent(context, MainActivity.class)
+                    .setAction(ACTION_SHOW_TRANSFERS)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (extra != null && !extra.isEmpty()) intentShowTransfers.putExtra(extra, true);
 
-            /**
-             * Remote view for normal view
-             */
-            Bitmap art = BitmapFactory.decodeResource(getResources(), R.drawable.notification_mule);
+            PendingIntent openPending = PendingIntent.getActivity(context,
+                    2,
+                    intentShowTransfers,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
             RemoteViews mNotificationTemplate = new RemoteViews(this.getPackageName(), R.layout.notification);
-            Notification.Builder notificationBuilder = new Notification.Builder(this);
-
             mNotificationTemplate.setTextViewText(R.id.notification_line_one, title);
             mNotificationTemplate.setTextViewText(R.id.notification_line_two, summary);
 
-            Context context = getApplicationContext();
-            PendingIntent pi = PendingIntent.getActivity(context, 0, intentShowTransfers, PendingIntent.FLAG_UPDATE_CURRENT);
             NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (manager == null) {
+                return;
+            }
 
-            Notification notification = new NotificationCompat.Builder(context, Constants.ED2K_NOTIFICATION_CHANNEL_ID)
+            createNotificationChannel(manager);
+
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(context, Constants.ED2K_NOTIFICATION_CHANNEL_ID)
                     .setWhen(System.currentTimeMillis())
                     .setSmallIcon(R.drawable.notification_mule)
                     .setContentIntent(openPending)
-                    .setPriority(Notification.PRIORITY_DEFAULT)
+                    .setAutoCancel(true)
+                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                     .setContent(mNotificationTemplate)
-                    .setUsesChronometer(true)
-                    .build();
+                    .setUsesChronometer(true);
 
-            notification.vibrate = ConfigurationManager.instance().vibrateOnFinishedDownload() ? VENEZUELAN_VIBE : null;
-
-            if (manager != null) {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    NotificationChannel channel = new NotificationChannel(Constants.ED2K_NOTIFICATION_CHANNEL_ID, "ED2K", NotificationManager.IMPORTANCE_MIN);
-                    channel.setSound(null, null);
-                    manager.createNotificationChannel(channel);
-                }
-                manager.notify(Constants.NOTIFICATION_DOWNLOAD_TRANSFER_FINISHED, notification);
+            if (ConfigurationManager.instance().vibrateOnFinishedDownload()) {
+                builder.setVibrate(VENEZUELAN_VIBE);
             }
+
+            manager.notify(Constants.NOTIFICATION_DOWNLOAD_TRANSFER_FINISHED, builder.build());
         } catch (Throwable e) {
             log.error("Error creating notification for download finished {}", e);
         }

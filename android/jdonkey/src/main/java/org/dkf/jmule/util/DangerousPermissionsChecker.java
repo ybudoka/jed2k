@@ -60,6 +60,7 @@ public final class DangerousPermissionsChecker implements ActivityCompat.OnReque
      */
     public static final int EXTERNAL_STORAGE_PERMISSIONS_REQUEST_CODE = 0x000A;
     public static final int ACCESS_COARSE_LOCATION_PERMISSIONS_REQUEST_CODE = 0x000B;
+    public static final int POST_NOTIFICATIONS_PERMISSIONS_REQUEST_CODE = 0x000C;
 
     // HACK: just couldn't find another way, and this saved a lot of overcomplicated logic in the onActivityResult handling activities.
     static long AUDIO_ID_FOR_WRITE_SETTINGS_RINGTONE_CALLBACK = -1;
@@ -104,6 +105,8 @@ public final class DangerousPermissionsChecker implements ActivityCompat.OnReque
                 // Android 10 (29) + android:requestLegacyExternalStorage should make it work
                 permissions = new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
             }
+        } else if (requestCode == POST_NOTIFICATIONS_PERMISSIONS_REQUEST_CODE && SystemUtils.hasAndroid13OrNewer()) {
+            permissions = new String[]{Manifest.permission.POST_NOTIFICATIONS};
         }
 
         if (permissions != null) {
@@ -122,7 +125,24 @@ public final class DangerousPermissionsChecker implements ActivityCompat.OnReque
 
     public boolean noAccess() {
         // simplified until otherwise necessary.
-        return requestCode == EXTERNAL_STORAGE_PERMISSIONS_REQUEST_CODE && noExternalStorageAccess();
+        if (requestCode == EXTERNAL_STORAGE_PERMISSIONS_REQUEST_CODE) {
+            return noExternalStorageAccess();
+        }
+        if (requestCode == POST_NOTIFICATIONS_PERMISSIONS_REQUEST_CODE) {
+            return noPostNotificationsAccess();
+        }
+        return false;
+    }
+
+    private boolean noPostNotificationsAccess() {
+        if (!SystemUtils.hasAndroid13OrNewer()) {
+            return false; // granted at install time before Android 13
+        }
+        if (!Ref.alive(activityRef)) {
+            return true;
+        }
+        return ContextCompat.checkSelfPermission(activityRef.get(),
+                Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_DENIED;
     }
 
     private boolean noExternalStorageAccess() {
@@ -130,6 +150,13 @@ public final class DangerousPermissionsChecker implements ActivityCompat.OnReque
             return true;
         }
         Activity activity = activityRef.get();
+        if (SystemUtils.hasAndroid13OrNewer()) {
+            // READ_EXTERNAL_STORAGE is never granted on Android 13, checking it here
+            // reported "no access" forever and re-triggered the permission prompt
+            return ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_DENIED &&
+                    ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_DENIED &&
+                    ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_DENIED;
+        }
         if (SystemUtils.hasAndroid10OrNewer()) {
             return ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED;
         }

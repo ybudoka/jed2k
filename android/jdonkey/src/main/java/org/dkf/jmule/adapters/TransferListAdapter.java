@@ -25,6 +25,9 @@ import android.view.View.OnClickListener;
 import android.view.View.OnLongClickListener;
 import android.view.ViewGroup;
 import android.widget.*;
+
+import androidx.core.content.ContextCompat;
+
 import org.dkf.jed2k.PeerInfo;
 import org.dkf.jed2k.TransferStatus;
 import org.dkf.jed2k.Utils;
@@ -61,7 +64,6 @@ public class TransferListAdapter extends BaseExpandableListAdapter {
      */
     private final List<Dialog> dialogs;
     private List<Transfer> list;
-    private final Map<TransferStatus.TransferState, String> TRANSFER_STATE_STRING_MAP = new HashMap<>();
 
     public TransferListAdapter(Context context, List<Transfer> list) {
         this.context = new WeakReference<>(context);
@@ -69,13 +71,7 @@ public class TransferListAdapter extends BaseExpandableListAdapter {
         this.viewOnLongClickListener = new ViewOnLongClickListener();
         this.playOnClickListener = new OpenOnClickListener(context);
         this.dialogs = new ArrayList<>();
-        this.list = list.equals(Collections.emptyList()) ? new ArrayList<Transfer>() : list;
-        initTransferStateStringMap();
-    }
-
-    private void initTransferStateStringMap() {
-        Context c = context.get();
-        TRANSFER_STATE_STRING_MAP.put(TransferStatus.TransferState.FINISHED, c.getString(R.string.finishing));
+        this.list = (list == null) ? new ArrayList<Transfer>() : list;
     }
 
     @Override
@@ -140,20 +136,29 @@ public class TransferListAdapter extends BaseExpandableListAdapter {
 
     @Override
     public long getGroupId(int groupPosition) {
-        return groupPosition;
+        // the list is re-sorted on every 2s refresh, so a positional id made the
+        // ExpandableListView carry the expanded state over to a different transfer
+        if (groupPosition < 0 || groupPosition >= list.size()) {
+            return groupPosition;
+        }
+        Transfer t = list.get(groupPosition);
+        String hash = (t != null) ? t.getHash() : null;
+        return (hash != null && !hash.isEmpty()) ? hash.hashCode() : groupPosition;
     }
 
     @Override
     public View getGroupView(int groupPosition, boolean isExpanded, View convertView, ViewGroup parent) {
         Transfer item = getGroupItem(groupPosition);
         ExpandableListView expandableListView = (ExpandableListView) parent;
-        LinearLayout listItemLinearLayoutHolder = (LinearLayout) convertView;
         if (convertView == null) { //if we don't have it yet, we inflate it ourselves.
             convertView = View.inflate(context.get(), R.layout.view_transfer_list_item, null);
-            if (convertView instanceof LinearLayout) {
-                listItemLinearLayoutHolder = (LinearLayout) convertView;
-            }
         }
+        if (!(convertView instanceof LinearLayout)) {
+            // guards against the holder staying null when the root of
+            // view_transfer_list_item is not a LinearLayout
+            return convertView;
+        }
+        LinearLayout listItemLinearLayoutHolder = (LinearLayout) convertView;
 
         listItemLinearLayoutHolder.setOnClickListener(viewOnClickListener);
         listItemLinearLayoutHolder.setOnLongClickListener(viewOnLongClickListener);
@@ -199,6 +204,9 @@ public class TransferListAdapter extends BaseExpandableListAdapter {
                 log.warn("Error dismissing dialog {}", e);
             }
         }
+        // the list was never emptied, so every dialog ever opened was retained
+        // (and re-dismissed) for the lifetime of the adapter
+        dialogs.clear();
     }
 
     @SuppressWarnings("unchecked")
@@ -216,9 +224,13 @@ public class TransferListAdapter extends BaseExpandableListAdapter {
 
     private MenuAdapter getMenuAdapter(View view) {
         Object tag = view.getTag();
-        String title = "";
+        // peer (child) rows are tagged with a PeerInfo and have no menu of their own;
+        // the unchecked cast used to throw a ClassCastException on every long press
+        if (!(tag instanceof Transfer) || context.get() == null) {
+            return null;
+        }
         List<MenuAction> items = new ArrayList<>();
-        title = populateTransferDownloadMenuAction((Transfer)tag, items);
+        String title = populateTransferDownloadMenuAction((Transfer) tag, items);
         return items.size() > 0 ? new MenuAdapter(context.get(), title, items) : null;
     }
 
@@ -312,6 +324,11 @@ public class TransferListAdapter extends BaseExpandableListAdapter {
     }
 
     private void populateTransferDownload(View view, Transfer download) {
+        final Context ctx = context.get();
+        if (ctx == null || download == null) {
+            return;
+        }
+
         TextView title = findView(view, R.id.view_transfer_list_item_title);
         ProgressBar progress = findView(view, R.id.view_transfer_list_item_progress);
         TextView status = findView(view, R.id.view_transfer_list_item_status);
@@ -324,8 +341,7 @@ public class TransferListAdapter extends BaseExpandableListAdapter {
 
         //ImageButton buttonPlay = findView(view, R.id.view_transfer_list_item_button_play);
 
-        seeds.setText(context.get().getString(R.string.seeds_n, formatPeers(download)));
-        //peers.setText(context.get().getString(R.string.peers_n, formatPeers(download)));
+        seeds.setText(ctx.getString(R.string.seeds_n, formatPeers(download)));
         seeds.setVisibility(View.VISIBLE);
         //peers.setVisibility(View.VISIBLE);
 
@@ -336,25 +352,34 @@ public class TransferListAdapter extends BaseExpandableListAdapter {
 
         if (!NetworkManager.instance().isInternetDataConnectionUp()) {
             status.setText(R.string.check_internet_connection);
+            status.setTextColor(ContextCompat.getColor(ctx, R.color.warning_red));
             seeds.setText("");
         } else {
+            // colour-code the state so it is readable at a glance instead of being
+            // four identical grey labels
+            int statusColor = R.color.app_text_secondary;
             switch (download.getState()) {
                 case PAUSED:
                     status.setText(R.string.transfer_state_paused);
+                    statusColor = R.color.transfer_state_paused;
                     break;
                 case COMPLETED:
                     status.setText(R.string.transfer_state_completed);
+                    statusColor = R.color.transfer_state_completed;
                     break;
                 case DOWNLOADING:
                     status.setText(R.string.transfer_state_downloading);
+                    statusColor = R.color.transfer_state_downloading;
                     break;
                 case STALLED:
                     status.setText(R.string.transfer_state_stalled);
+                    statusColor = R.color.transfer_state_stalled;
                     break;
                 default:
                     status.setText("");
                     break;
             }
+            status.setTextColor(ContextCompat.getColor(ctx, statusColor));
         }
 
         speed.setText(UIUtils.getBytesInHuman(download.getDownloadSpeed()) + "/s");
@@ -383,12 +408,13 @@ public class TransferListAdapter extends BaseExpandableListAdapter {
         int connectedPeers = dl.getConnectedPeers();
         int peers = dl.getTotalPeers();
 
-        String tmp = connectedPeers > peers ? "%1" : "%1 " + "/" + " %2";
+        // when we know of fewer peers than we are connected to, the total is stale
+        // and showing "12 / 3" would be nonsense
+        if (connectedPeers > peers) {
+            return String.valueOf(connectedPeers);
+        }
 
-        tmp = tmp.replaceAll("%1", String.valueOf(connectedPeers));
-        tmp = tmp.replaceAll("%2", String.valueOf(peers));
-
-        return tmp;
+        return connectedPeers + " / " + peers;
     }
 
     private void populatePeerItem(View view, PeerInfo item) {
@@ -408,14 +434,18 @@ public class TransferListAdapter extends BaseExpandableListAdapter {
         //ImageButton buttonPlay = findView(view, R.id.view_transfer_item_list_item_button_play);
 
         //icon.setImageResource(MediaType.getFileTypeIconId(FilenameUtils.getExtension(item.getFilePath().getAbsolutePath())));
-        title.setText(item.getEndpoint().toString());
-        String templateTotalBytes = view.getResources().getString(R.string.peer_total_bytes_download);
-        String templateSpeed = view.getResources().getString(R.string.peer_speed);
-        String strTotalBytes = String.format(templateTotalBytes, UIUtils.getBytesInHuman(item.getDownloadPayload() + item.getDownloadProtocol()));
-        String strSpeed = String.format(templateSpeed, UIUtils.rate2speed(item.getDownloadSpeed() / 1024));
-        String strSummary = String.format("[%s] %s", item.getStrModVersion() != null?item.getStrModVersion():"", item.getModName());
-        totalBytes.setText(strTotalBytes);
-        speed.setText(strSpeed);
+        title.setText(item.getEndpoint() != null ? item.getEndpoint().toString() : "");
+        totalBytes.setText(view.getResources().getString(R.string.peer_total_bytes_download,
+                UIUtils.getBytesInHuman(item.getDownloadPayload() + item.getDownloadProtocol())));
+        speed.setText(view.getResources().getString(R.string.peer_speed,
+                UIUtils.rate2speed(item.getDownloadSpeed() / 1024)));
+
+        // a null mod name used to be rendered literally as the text "null"
+        String modVersion = (item.getStrModVersion() != null) ? item.getStrModVersion() : "";
+        String modName = (item.getModName() != null) ? item.getModName() : "";
+        String strSummary = modVersion.isEmpty() && modName.isEmpty()
+                ? ""
+                : String.format("[%s] %s", modVersion, modName).trim();
         summary.setText(strSummary);
         //buttonPlay.setTag(item);
         //updatePlayButtonVisibility(item, buttonPlay);
