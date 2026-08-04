@@ -102,6 +102,25 @@ android {
 
 
     signingConfigs {
+        // Debug builds are normally signed with ~/.android/debug.keystore, which is
+        // generated on the fly the first time a machine builds anything. Every CI runner
+        // is a fresh machine, so consecutive CI builds were each signed with a different
+        // throwaway key - and Android refuses to update an installed app whose signature
+        // does not match, which shows up as "conflicts with an existing package".
+        //
+        // Pinning a keystore that lives in the repo makes every debug build - CI or
+        // local, today or next month - update-compatible with the previous one.
+        //
+        // This is a *debug* key and is meant to be public: standard debug credentials,
+        // no security value, and it signs nothing that ships. Release keeps its own
+        // config below and is untouched.
+        debug {
+            storeFile file('ci/debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+
         release {
             if (isAssembleRelease) {
                 storeFile file("/home/inkpot/dev/jdonkey.keystore")
@@ -134,6 +153,7 @@ android {
         debug {
             minifyEnabled false
             buildConfigField "String", "FLAVOR", "\"basic\""
+            signingConfig signingConfigs.debug
             //proguardFiles getDefaultProguardFile('proguard-android.txt'),
             //        'proguard-rules.pro'
             //multiDexKeepFile file('multidex-config.txt')
