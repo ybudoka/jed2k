@@ -27,13 +27,17 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
 
-      # The Android Gradle Plugin pinned in android/jdonkey/build.gradle is 7.2.2,
-      # which runs on JDK 11. Newer JDKs are not supported by AGP 7.x.
-      - name: Set up JDK 11
+      # Two JDKs are needed, and the order matters. Current Android command-line
+      # tools refuse to run on anything below JDK 17 ("This tool requires JDK 17 or
+      # later"), while the Android Gradle Plugin pinned in
+      # android/jdonkey/build.gradle is 7.2.2, which runs on JDK 11 and is not
+      # supported on newer JDKs. So: install 17, set the SDK up with it, then drop
+      # back to 11 for the build itself. setup-java sets JAVA_HOME, last call wins.
+      - name: Set up JDK 17 (for sdkmanager)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '11'
+          java-version: '17'
 
       # compileSdkVersion 33 and buildToolsVersion "31.0.0" from the module build file.
       # The runner image ships some SDK packages already, but not necessarily these.
@@ -41,6 +45,12 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           packages: 'platforms;android-33 build-tools;31.0.0 platform-tools'
+
+      - name: Switch to JDK 11 (for AGP 7.2.2)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
 
       # There is no Gradle wrapper committed, so the version has to be pinned here.
       # AGP 7.2.2 needs Gradle 7.3.3 or newer and does not work on Gradle 8:
