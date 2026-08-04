@@ -43,6 +43,7 @@
         android:paddingLeft="12dp"
         android:paddingRight="12dp"
         android:scaleType="fitCenter"
+        android:tint="@color/icon_tint"
         android:src="@drawable/download_icon" />
 
     <LinearLayout

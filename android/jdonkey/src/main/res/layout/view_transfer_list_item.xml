@@ -51,6 +51,7 @@
             android:layout_gravity="center"
             android:contentDescription="@null"
             android:scaleType="fitCenter"
+            android:tint="@color/icon_tint"
             android:src="@drawable/transfer_menuitem_plus" />
     </FrameLayout>
 

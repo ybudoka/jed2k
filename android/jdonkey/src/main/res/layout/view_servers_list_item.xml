@@ -35,6 +35,7 @@
         android:alpha="0.4"
         android:contentDescription="@null"
         android:scaleType="fitCenter"
+        android:tint="@color/icon_tint"
         android:src="@drawable/ic_flash_off_black_24dp" />
 
     <LinearLayout

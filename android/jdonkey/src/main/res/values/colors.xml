@@ -124,6 +124,20 @@
     <color name="transfer_state_paused">@color/app_text_secondary</color>
 
     <!-- Text Colors -->
+    <!--
+      Icon tints. Every monochrome icon in the app is a single-colour silhouette with
+      an alpha channel - black or dark grey for the ones that sit on body surfaces -
+      so under the dark theme they were drawn dark-on-dark and simply vanished.
+      Tinting them from the text ladder makes them follow the theme the way the text
+      already does, and costs nothing in the light theme where the tint is close to
+      the colour they were painted in.
+
+      Icons that sit on the navy chrome (the toolbar, the transfers indicator strip)
+      are white in both themes and are deliberately left untinted.
+    -->
+    <color name="icon_tint">@color/app_text_primary</color>
+    <color name="icon_tint_secondary">@color/app_text_secondary</color>
+
     <color name="app_text_primary">@color/basic_gray_text_dark</color>
     <color name="app_text_secondary">@color/basic_gray_text_medium</color>
     <color name="app_text_disabled">@color/basic_gray_text_light</color>

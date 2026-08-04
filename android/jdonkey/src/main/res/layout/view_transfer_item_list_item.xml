@@ -45,6 +45,7 @@
             android:layout_gravity="center|center_horizontal"
             android:contentDescription="@null"
             android:scaleType="fitCenter"
+            android:tint="@color/icon_tint"
             android:src="@drawable/ic_computer_black_24dp" />
     </FrameLayout>
 
