@@ -456,6 +456,17 @@ public class ED2KService extends JobIntentService {
     }
 
     public synchronized boolean isDhtEnabled() {
+        // A tracker whose thread has ended is not a tracker. It used to stay registered
+        // anyway, so the app reported DHT as enabled for the rest of the run while every
+        // source lookup threw "DHT tracker was already aborted" once per second.
+        if (dhtTracker != null && dhtTracker.getState() == Thread.State.TERMINATED) {
+            log.warn("[ED2K service] DHT tracker thread has ended, dropping it");
+            if (session != null) {
+                session.setDhtTracker(null);
+            }
+            dhtTracker = null;
+        }
+
         return dhtTracker != null;
     }
 
@@ -715,6 +726,17 @@ public class ED2KService extends JobIntentService {
     public void processAlert(final Alert a) {
         try {
             if (a instanceof ListenAlert) {
+                // Worth a line of its own: without this socket the server's callback
+                // requests have nowhere to land, which means Low ID sources - most of
+                // them - can never be downloaded from.
+                ListenAlert la = (ListenAlert) a;
+                if (la.details == null || la.details.isEmpty()) {
+                    log.info("[ED2K service] listening on port {}", la.port);
+                } else {
+                    log.error("[ED2K service] unable to listen on port {}: {}, incoming connections are disabled"
+                            , la.port, la.details);
+                }
+
                 for (final AlertListener ls : listeners) ls.onListen((ListenAlert) a);
             } else if (a instanceof SearchResultAlert) {
                 // inplace filtering bad words in case when search is limited or we have blocked hashes dictionary

@@ -9,6 +9,7 @@ import org.dkf.jed2k.hash.MD4;
 import org.dkf.jed2k.protocol.*;
 import org.dkf.jed2k.protocol.PacketCombiner;
 import org.dkf.jed2k.protocol.kad.*;
+import org.dkf.jed2k.util.PortBinder;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -77,11 +78,26 @@ public class DhtTracker extends Thread {
         node.setAddress(localAddress);
 
         try {
-            InetSocketAddress addr = new InetSocketAddress(listenPort);
-            log.debug("[tracker] starting {}", addr.getAddress().getHostAddress());
+            log.debug("[tracker] starting on port {}", listenPort);
             selector = Selector.open();
             channel = DatagramChannel.open();
-            channel.socket().bind(addr);
+
+            // Same reasoning as the session's listen socket: a port that is simply
+            // taken - by a second copy of the app, or by one that has not finished
+            // shutting down - used to kill DHT for the whole run, since this thread
+            // ends here and leaves an aborted tracker behind that everything else
+            // still believes is alive.
+            final DatagramChannel dc = channel;
+            PortBinder.bind(listenPort, new PortBinder.Bind() {
+                @Override
+                public void bind(int port) throws IOException {
+                    dc.socket().bind(new InetSocketAddress(port));
+                }
+            });
+
+            listenPort = channel.socket().getLocalPort();
+            log.debug("[tracker] listening on port {}", listenPort);
+
             channel.configureBlocking(false);
             key = channel.register(selector, SelectionKey.OP_READ);
             incomingBuffer = ByteBuffer.allocate(INPUT_BUFFER_LIMIT);
