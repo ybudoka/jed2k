@@ -62,6 +62,7 @@ import org.dkf.jed2k.protocol.kad.KadId;
 import org.dkf.jed2k.protocol.kad.KadNodesDat;
 import org.dkf.jed2k.protocol.server.search.SearchRequest;
 import org.dkf.jmule.activities.MainActivity;
+import org.dkf.jed2k.util.FileNames;
 import org.dkf.jmule.util.MulticastLease;
 import org.slf4j.Logger;
 
@@ -1212,9 +1213,59 @@ public class ED2KService extends JobIntentService {
         log.info("stop self {} last id: {}", b?"true":"false", lastStartId);
     }
 
-    public TransferHandle addTransfer(final Hash hash, final long fileSize, final File file)
+    /**
+     * Picks a name for a new download that nothing else is using.
+     * <p>
+     * Two different hashes with the same name is routine on ed2k - the same release
+     * repacked, or just "video.mp4" - and both used to be written to one path, so the
+     * transfers interleaved their writes and turned two good sources into two corrupt
+     * files. A name left over from an earlier download does the same.
+     * <p>
+     * Both a file already on disk and a name another live transfer is heading for count
+     * as taken: two downloads started seconds apart would otherwise agree on a name
+     * before either file existed.
+     */
+    private File uniqueTargetFile(final File file) {
+        final File dir = file.getParentFile();
+        if (dir == null) {
+            return file;
+        }
+
+        final Set<String> claimed = new HashSet<>();
+        for (final TransferHandle handle : getTransfers()) {
+            final File target = handle.getFile();
+            if (target != null && dir.equals(target.getParentFile())) {
+                claimed.add(target.getName());
+            }
+        }
+
+        final FileSystem fs = Platforms.fileSystem();
+
+        final String name = FileNames.uniqueName(file.getName(), new FileNames.Taken() {
+            @Override
+            public boolean contains(final String candidate) {
+                return claimed.contains(candidate) || fs.exists(new File(dir, candidate));
+            }
+        });
+
+        if (name == null || name.equals(file.getName())) {
+            return file;
+        }
+
+        log.info("[ED2K service] {} is taken, downloading as {}", file.getName(), name);
+        return new File(dir, name);
+    }
+
+    public TransferHandle addTransfer(final Hash hash, final long fileSize, final File requested)
             throws JED2KException {
         if(session != null) {
+            // session.addTransfer() hands back the existing transfer when the hash is
+            // already there and ignores the file, so renaming first would create an
+            // empty file for nothing. Asked of the session rather than of the
+            // localHashes cache, which is fed from alerts and can lag behind it.
+            final boolean known = session.findTransfer(hash).isValid();
+            final File file = known ? requested : uniqueTargetFile(requested);
+
             log.info("[ED2K service] start transfer {} file {} size {}"
                     , hash.toString()
                     , file
