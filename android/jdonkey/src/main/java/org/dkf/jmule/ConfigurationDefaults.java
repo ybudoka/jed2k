@@ -73,6 +73,7 @@ final class ConfigurationDefaults {
         defaultValues.put(Constants.PREF_KEY_GUI_SHARE_MEDIA_DOWNLOADS, false);
         defaultValues.put(Constants.PREF_KEY_GUI_THEME, Constants.THEME_SYSTEM);
         defaultValues.put(Constants.PREF_KEY_GUI_VERBOSE_LOG, false);
+        defaultValues.put(Constants.PREF_KEY_EXTRA_FOLDERS, "");
 
         defaultValues.put(Constants.PREF_KEY_SEARCH_COUNT_DOWNLOAD_FOR_TORRENT_DEEP_SCAN, 20);
         defaultValues.put(Constants.PREF_KEY_SEARCH_COUNT_ROUNDS_FOR_TORRENT_DEEP_SCAN, 10);

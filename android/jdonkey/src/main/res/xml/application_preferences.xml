@@ -176,6 +176,11 @@
          literal would have sent this button to the *other* app - or nowhere. It is
          wired up in SettingsActivity.setupAbout() instead, where the class reference
          resolves against whichever package is actually running. -->
+    <Preference
+            android:key="jmule.prefs.show_folders"
+            android:title="@string/folders"
+            android:summary="@string/folders_summary"/>
+
     <!-- Both wired in SettingsActivity, see setupRescan(). -->
     <Preference
             android:key="jmule.prefs.rescan_incomplete"

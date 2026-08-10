@@ -292,6 +292,18 @@
     <string name="rescan_none">Aucun téléchargement inachevé que l\'application n\'avait pas déjà. Un fichier ne peut être repris que si l\'enregistrement de reprise écrit à côté de lui est toujours présent.</string>
     <string name="rescan_not_running">Démarrez d\'abord le service ED2K</string>
 
+    <string name="folders">Dossiers</string>
+    <string name="folders_summary">Les dossiers utilisés par l\'application, et ceux que vous ajoutez</string>
+    <string name="folders_explanation">Ce client télécharge mais n\'envoie rien : aucun de ces dossiers n\'est proposé aux autres utilisateurs, et aucun fichier n\'y est partagé. Ajouter un dossier permet de reprendre les téléchargements inachevés qui s\'y trouvent.</string>
+    <string name="folders_role_downloads">Téléchargements terminés</string>
+    <string name="folders_role_incomplete">Téléchargements inachevés</string>
+    <string name="folders_role_added">Ajouté par vous</string>
+    <string name="folders_add">Ajouter un dossier…</string>
+    <string name="folders_scan">Analyser</string>
+    <string name="folders_remove">Retirer</string>
+    <string name="folders_pick_failed">Ce dossier n\'a pas pu être ouvert</string>
+    <string name="rescan_none_short">Rien à reprendre dans ce dossier</string>
+
     <!-- recherche -->
     <string name="search_more_none">Le serveur a renvoyé tout ce qu\'il avait pour cette recherche</string>
     <string name="search_more_no_server">Aucun serveur connecté</string>

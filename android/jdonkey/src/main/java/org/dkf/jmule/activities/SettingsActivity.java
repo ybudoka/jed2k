@@ -164,6 +164,17 @@ public class SettingsActivity extends PreferenceActivity {
      * the user points at.
      */
     private void setupRescan() {
+        Preference folders = findPreference("jmule.prefs.show_folders");
+        if (folders != null) {
+            folders.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+                @Override
+                public boolean onPreferenceClick(Preference preference) {
+                    startActivity(new Intent(SettingsActivity.this, FoldersActivity.class));
+                    return true;
+                }
+            });
+        }
+
         Preference rescan = findPreference("jmule.prefs.rescan_incomplete");
         if (rescan != null) {
             rescan.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {

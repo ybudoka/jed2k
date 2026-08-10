@@ -97,6 +97,13 @@ public final class Constants {
      */
     public static final String PREF_KEY_GUI_VERBOSE_LOG = "jmule.prefs.gui.verbose_log";
 
+    /**
+     * Extra folders the user has added on the folders screen, newline separated - see
+     * {@link org.dkf.jed2k.util.PathList}. Not shared with anyone: this client does not
+     * upload. They are the folders its unfinished downloads can be recovered from.
+     */
+    public static final String PREF_KEY_EXTRA_FOLDERS = "jmule.prefs.extra_folders";
+
     // ed2k common and servers
     public static final String PREF_KEY_USER_AGENT = "jmule.prefs.user_agent";
     public static final String PREF_KEY_NICKNAME = "jmule.prefs.nickname";

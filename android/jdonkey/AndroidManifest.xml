@@ -141,6 +141,10 @@
                   android:label="@string/logs"
                   android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboard|keyboardHidden|navigation"/>
 
+        <activity android:name="org.dkf.jmule.activities.FoldersActivity"
+                  android:label="@string/folders"
+                  android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboard|keyboardHidden|navigation"/>
+
         <activity android:name="org.dkf.jmule.activities.SettingsActivity"
                   android:label="@string/activity_preferences_name"
                   android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboard|keyboardHidden|navigation"
