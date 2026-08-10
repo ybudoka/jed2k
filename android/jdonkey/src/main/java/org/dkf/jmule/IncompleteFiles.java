@@ -161,6 +161,31 @@ public final class IncompleteFiles {
     }
 
     /**
+     * Looks for an unfinished download of this exact hash.
+     * <p>
+     * This is what makes starting the same file twice continue it instead of beginning
+     * again: the resume record beside the partial file carries the hash, so a request
+     * for that hash can be pointed at the bytes already on disk.
+     *
+     * @return its resume record, already pointing at the file, or null
+     */
+    public static AddTransferParams findByHash(final org.dkf.jed2k.protocol.Hash hash
+            , final File scratchDir) {
+
+        if (hash == null) {
+            return null;
+        }
+
+        for (final AddTransferParams atp : scan(scratchDir)) {
+            if (atp != null && hash.equals(atp.getHash())) {
+                return atp;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * The same, over any folder. Unfinished downloads made before this app version, or
      * by another install writing somewhere else, are found by pointing this at wherever
      * they are.

@@ -720,6 +720,20 @@ public class ED2KService extends JobIntentService {
             }
         }
         */
+        // The database write goes first and on its own. Everything after it - moving a
+        // finished file, writing the record beside it - is file I/O that can throw, and
+        // when it was ordered ahead of this, a single failure there meant the resume
+        // data was never stored at all and the download began again from nothing on the
+        // next launch. Losing the extras is a degraded feature; losing this is the
+        // whole download.
+        try {
+            dbHelper.saveResumeData(alert.trd);
+        } catch (JED2KException e) {
+            log.error("[ED2K service] save resume data {} failed {}", alert.hash, e);
+        } catch (Throwable e) {
+            log.error("[ED2K service] save resume data error {}", e.getMessage());
+        }
+
         try {
             File file = new File(alert.trd.getFilepath().asString());
 
@@ -727,22 +741,19 @@ public class ED2KService extends JobIntentService {
             // data exists, so the file is moved and the record retargeted together.
             if (pendingMove.remove(alert.hash)) {
                 file = moveToFinished(file, alert.trd);
+                // the path changed, so the stored record has to follow it
+                dbHelper.saveResumeData(alert.trd);
             }
-
-            dbHelper.saveResumeData(alert.trd);
 
             // A second copy, next to the file itself. The database is app-private and
             // does not survive a reinstall or "clear data"; this one does, and is what
             // the startup scan recovers a download from.
-            if (IncompleteFiles.folder() != null
-                    && IncompleteFiles.folder().equals(file.getParentFile())) {
+            final File incomplete = IncompleteFiles.folder();
+            if (incomplete != null && incomplete.equals(file.getParentFile())) {
                 IncompleteFiles.writeResume(file, alert.trd);
             }
-        } catch (JED2KException e) {
-            log.error("[ED2K service] save resume data {} failed {}"
-                    , alert.hash, e);
         } catch (Throwable e) {
-            log.error("save resume data error {}", e.getMessage());
+            log.warn("[ED2K service] resume record beside {} failed: {}", alert.hash, e.toString());
         }
     }
 
@@ -1461,6 +1472,42 @@ public class ED2KService extends JobIntentService {
         return destination;
     }
 
+    /**
+     * Picks up an unfinished download of this hash that is already on disk.
+     *
+     * @return its handle, or null when there is none or it cannot be opened
+     */
+    private TransferHandle resumeExisting(final Hash hash) {
+        try {
+            final AddTransferParams atp = IncompleteFiles.findByHash(hash, getCacheDir());
+            if (atp == null) {
+                return null;
+            }
+
+            final File file = new File(atp.getFilepath().asString());
+
+            if (Platforms.get().saf()) {
+                LollipopFileSystem fs = (LollipopFileSystem) Platforms.fileSystem();
+                android.util.Pair<ParcelFileDescriptor, DocumentFile> fd = fs.openFD(file, "rw");
+                if (fd == null || fd.first == null || fd.second == null) {
+                    log.warn("[ED2K service] found a partial {} but cannot open it", file.getName());
+                    return null;
+                }
+                atp.setExternalFileHandler(new AndroidFileHandler(file, fd.second, fd.first));
+            } else {
+                atp.setExternalFileHandler(new DesktopFileHandler(file));
+            }
+
+            log.info("[ED2K service] continuing the partial download already at {}", file);
+            final TransferHandle handle = session.addTransfer(atp);
+            dbHelper.saveResumeData(atp);
+            return handle;
+        } catch (Throwable t) {
+            log.warn("[ED2K service] unable to continue an existing partial for {}: {}", hash, t.toString());
+            return null;
+        }
+    }
+
     public TransferHandle addTransfer(final Hash hash, final long fileSize, final File requested)
             throws JED2KException {
         if(session != null) {
@@ -1469,6 +1516,20 @@ public class ED2KService extends JobIntentService {
             // empty file for nothing. Asked of the session rather than of the
             // localHashes cache, which is fed from alerts and can lag behind it.
             final boolean known = session.findTransfer(hash).isValid();
+
+            if (!known) {
+                // An unfinished download of this exact hash may already be on disk with
+                // its resume record beside it - the app was reinstalled, its data was
+                // cleared, or the transfer was removed from the list but not from
+                // storage. Continuing that is the whole point of keeping the record;
+                // without this the unique-name rule below would helpfully step around
+                // the partial file and start the same download again from zero.
+                final TransferHandle resumed = resumeExisting(hash);
+                if (resumed != null) {
+                    return resumed;
+                }
+            }
+
             final File file = known ? requested : uniqueTargetFile(requested);
 
             log.info("[ED2K service] start transfer {} file {} size {}"
