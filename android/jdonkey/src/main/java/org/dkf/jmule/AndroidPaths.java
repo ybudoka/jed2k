@@ -39,6 +39,10 @@ import java.util.Map;
  * JED2K stores all files to one place without sub dirs
  */
 public final class AndroidPaths {
+    // The slf4j imports were here before anything used them; data() logs now when it
+    // declines a configured folder, and that needs an actual logger.
+    private static final Logger LOG = LoggerFactory.getLogger(AndroidPaths.class);
+
     private static final boolean USE_EXTERNAL_STORAGE_DIR_ON_OR_AFTER_ANDROID_10 = true;
     private final Application app;
 
