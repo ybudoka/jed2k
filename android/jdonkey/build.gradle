@@ -179,11 +179,11 @@ android {
             resValue "string", "application_label", "Mule"
         }
     }
+    // One block, not two: lintOptions is the deprecated pre-AGP-7 alias for lint, and
+    // having both meant the same extension was configured twice, half of it through
+    // the deprecated name.
     lint {
         abortOnError false
-    }
-
-    lintOptions {
         checkReleaseBuilds false
     }
 

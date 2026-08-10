@@ -23,7 +23,9 @@ jar {
 
 task fatJar(type: Jar) {
     manifest.from jar.manifest
-    classifier = 'all'
+    // `classifier` was deprecated in Gradle 5 and removed in 8; archiveClassifier is
+    // the replacement and works from Gradle 5 on.
+    archiveClassifier = 'all'
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     } {
@@ -40,7 +42,6 @@ artifacts {
 
 repositories {
     mavenCentral()
-    jcenter()
 }
 
 run {
