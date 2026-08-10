@@ -721,7 +721,23 @@ public class ED2KService extends JobIntentService {
         }
         */
         try {
+            File file = new File(alert.trd.getFilepath().asString());
+
+            // The transfer said it was finished; this is the first moment its resume
+            // data exists, so the file is moved and the record retargeted together.
+            if (pendingMove.remove(alert.hash)) {
+                file = moveToFinished(file, alert.trd);
+            }
+
             dbHelper.saveResumeData(alert.trd);
+
+            // A second copy, next to the file itself. The database is app-private and
+            // does not survive a reinstall or "clear data"; this one does, and is what
+            // the startup scan recovers a download from.
+            if (IncompleteFiles.folder() != null
+                    && IncompleteFiles.folder().equals(file.getParentFile())) {
+                IncompleteFiles.writeResume(file, alert.trd);
+            }
         } catch (JED2KException e) {
             log.error("[ED2K service] save resume data {} failed {}"
                     , alert.hash, e);
@@ -786,6 +802,8 @@ public class ED2KService extends JobIntentService {
                 saveResumeData((TransferResumeDataAlert) a);
             } else if (a instanceof TransferFinishedAlert) {
                 log.info("[ED2K service] transfer finished {} save resume data", ((TransferFinishedAlert) a).hash);
+                // handled when the resume data comes back, see saveResumeData()
+                pendingMove.add(((TransferFinishedAlert) a).hash);
                 session.saveResumeData();
                 notificationHandler.post(new Runnable() {
                     @Override
@@ -879,6 +897,96 @@ public class ED2KService extends JobIntentService {
             }
         } catch (Exception e) {
             log.error("restore transfer and publish error {}", e.getMessage());
+        }
+
+        recoverIncompleteTransfers();
+    }
+
+    /**
+     * Picks up unfinished downloads the database does not know about.
+     * <p>
+     * The database is app-private: it is gone after a reinstall or "clear data", and a
+     * second install of the app sharing the same download folder has its own. The files
+     * survive all of that, and so does the resume record written next to each one - so
+     * the folder is scanned and anything not already restored is added back, complete
+     * with which pieces it already has.
+     */
+    private void recoverIncompleteTransfers() {
+        try {
+            final List<AddTransferParams> candidates = IncompleteFiles.scan(getCacheDir());
+            int recovered = 0;
+
+            for (final AddTransferParams atp : candidates) {
+                if (atp == null || session == null) {
+                    continue;
+                }
+
+                if (session.findTransfer(atp.getHash()).isValid()) {
+                    continue;   // the database already restored this one
+                }
+
+                final File file = new File(atp.getFilepath().asString());
+
+                try {
+                    if (Platforms.get().saf()) {
+                        LollipopFileSystem fs = (LollipopFileSystem) Platforms.fileSystem();
+                        android.util.Pair<ParcelFileDescriptor, DocumentFile> fd = fs.openFD(file, "rw");
+                        if (fd == null || fd.first == null || fd.second == null) {
+                            log.warn("[ED2K service] cannot open recovered file {}", file.getName());
+                            continue;
+                        }
+                        atp.setExternalFileHandler(new AndroidFileHandler(file, fd.second, fd.first));
+                    } else {
+                        atp.setExternalFileHandler(new DesktopFileHandler(file));
+                    }
+
+                    session.addTransfer(atp);
+                    dbHelper.saveResumeData(atp);
+                    recovered++;
+                    log.info("[ED2K service] recovered unfinished download {}", file.getName());
+                } catch (Throwable t) {
+                    log.warn("[ED2K service] unable to recover {}: {}", file.getName(), t.toString());
+                }
+            }
+
+            if (recovered > 0) {
+                log.info("[ED2K service] recovered {} unfinished download(s) from {}"
+                        , recovered, IncompleteFiles.FOLDER);
+            }
+
+            sweepFinishedOutOfIncomplete();
+        } catch (Throwable t) {
+            log.error("[ED2K service] incomplete scan failed {}", t.toString());
+        }
+    }
+
+    /**
+     * Anything already complete but still sitting in the incomplete folder is queued for
+     * the move. That happens when the copy failed last time, or when the app was killed
+     * between the last piece landing and the move.
+     */
+    private void sweepFinishedOutOfIncomplete() {
+        final File incomplete = IncompleteFiles.folder();
+        if (incomplete == null || session == null) {
+            return;
+        }
+
+        boolean any = false;
+
+        for (final TransferHandle handle : getTransfers()) {
+            if (!handle.isValid() || !handle.isFinished()) {
+                continue;
+            }
+
+            final File file = handle.getFile();
+            if (file != null && incomplete.equals(file.getParentFile())) {
+                pendingMove.add(handle.getHash());
+                any = true;
+            }
+        }
+
+        if (any) {
+            session.saveResumeData();
         }
     }
 
@@ -1225,11 +1333,21 @@ public class ED2KService extends JobIntentService {
      * as taken: two downloads started seconds apart would otherwise agree on a name
      * before either file existed.
      */
-    private File uniqueTargetFile(final File file) {
+    private File uniqueTargetFile(final File requested) {
+        // Unfinished downloads live in their own folder: a half-downloaded file sitting
+        // in the download folder is indistinguishable by name from a finished one, and
+        // a folder of its own is also what makes the recovery scan possible.
+        final File incomplete = IncompleteFiles.folder();
+        final File file = (incomplete != null) ? new File(incomplete, requested.getName()) : requested;
+
         final File dir = file.getParentFile();
         if (dir == null) {
             return file;
         }
+
+        // The name has to be free in the folder it will end up in as well, or the move
+        // at the end of the download would collide instead.
+        final File finalDir = Platforms.data();
 
         final Set<String> claimed = new HashSet<>();
         for (final TransferHandle handle : getTransfers()) {
@@ -1244,7 +1362,9 @@ public class ED2KService extends JobIntentService {
         final String name = FileNames.uniqueName(file.getName(), new FileNames.Taken() {
             @Override
             public boolean contains(final String candidate) {
-                return claimed.contains(candidate) || fs.exists(new File(dir, candidate));
+                return claimed.contains(candidate)
+                        || fs.exists(new File(dir, candidate))
+                        || (finalDir != null && fs.exists(new File(finalDir, candidate)));
             }
         });
 
@@ -1254,6 +1374,78 @@ public class ED2KService extends JobIntentService {
 
         log.info("[ED2K service] {} is taken, downloading as {}", file.getName(), name);
         return new File(dir, name);
+    }
+
+    /**
+     * Hashes whose file still has to be moved out of the incomplete folder. A transfer
+     * announces that it finished before its resume data is written, and the move is done
+     * once that data arrives so the record can be pointed at the new path in the same
+     * step.
+     */
+    private final Set<Hash> pendingMove = Collections.synchronizedSet(new HashSet<Hash>());
+
+    /**
+     * Moves a finished download out of the incomplete folder and retargets its resume
+     * record.
+     * <p>
+     * Every failure leaves the file exactly where it is. It is complete and usable in
+     * the incomplete folder; refusing to finish the download over a failed copy would be
+     * the worse outcome.
+     *
+     * @return the file's new location, or its old one when nothing was moved
+     */
+    private File moveToFinished(final File source, final AddTransferParams atp) {
+        final File incomplete = IncompleteFiles.folder();
+        final File finalDir = Platforms.data();
+
+        if (source == null || incomplete == null || finalDir == null
+                || !incomplete.equals(source.getParentFile())) {
+            return source;
+        }
+
+        final FileSystem fs = Platforms.fileSystem();
+
+        final String name = FileNames.uniqueName(source.getName(), new FileNames.Taken() {
+            @Override
+            public boolean contains(final String candidate) {
+                return fs.exists(new File(finalDir, candidate));
+            }
+        });
+
+        final File destination = new File(finalDir, name);
+        final long expected = fs.length(source);
+
+        if (!fs.copy(source, destination)) {
+            log.warn("[ED2K service] unable to move {} out of {}, leaving it there"
+                    , source.getName(), IncompleteFiles.FOLDER);
+            return source;
+        }
+
+        if (fs.length(destination) != expected) {
+            log.error("[ED2K service] short copy of {} ({} of {} bytes), keeping the original"
+                    , source.getName(), fs.length(destination), expected);
+            fs.delete(destination);
+            return source;
+        }
+
+        IncompleteFiles.deleteResume(source);
+
+        if (!fs.delete(source)) {
+            log.warn("[ED2K service] {} was copied to {} but the original could not be removed"
+                    , source.getName(), destination);
+        }
+
+        log.info("[ED2K service] finished {} moved to {}", source.getName(), destination);
+
+        if (atp != null) {
+            try {
+                atp.getFilepath().assignString(destination.getAbsolutePath());
+            } catch (Throwable t) {
+                log.warn("[ED2K service] unable to retarget resume record {}", t.toString());
+            }
+        }
+
+        return destination;
     }
 
     public TransferHandle addTransfer(final Hash hash, final long fileSize, final File requested)
