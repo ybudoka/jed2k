@@ -284,6 +284,14 @@
     <string name="verify_mismatch">Le fichier ne correspond pas à son empreinte ed2k. Son contenu diffère du fichier demandé : supprimez-le et retéléchargez-le.</string>
     <string name="verify_unreadable">Le fichier n\'a pas pu être lu jusqu\'au bout.</string>
 
+    <string name="rescan_incomplete">Rechercher les téléchargements inachevés</string>
+    <string name="rescan_incomplete_summary">Parcourir le dossier Incomplete à la recherche de téléchargements que l\'application a perdus</string>
+    <string name="rescan_folder">Analyser un autre dossier…</string>
+    <string name="rescan_folder_summary">Chercher des téléchargements inachevés ailleurs : carte SD, ou dossier utilisé par une version antérieure</string>
+    <string name="rescan_found">Reprise de %1$d téléchargement(s) inachevé(s)</string>
+    <string name="rescan_none">Aucun téléchargement inachevé que l\'application n\'avait pas déjà. Un fichier ne peut être repris que si l\'enregistrement de reprise écrit à côté de lui est toujours présent.</string>
+    <string name="rescan_not_running">Démarrez d\'abord le service ED2K</string>
+
     <!-- recherche -->
     <string name="search_more_none">Le serveur a renvoyé tout ce qu\'il avait pour cette recherche</string>
     <string name="search_more_no_server">Aucun serveur connecté</string>

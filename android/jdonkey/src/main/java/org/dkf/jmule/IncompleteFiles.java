@@ -157,12 +157,22 @@ public final class IncompleteFiles {
      * @return the recoverable transfers, each already pointing at its file on disk
      */
     public static List<AddTransferParams> scan(final File scratchDir) {
+        return scan(folder(), scratchDir);
+    }
+
+    /**
+     * The same, over any folder. Unfinished downloads made before this app version, or
+     * by another install writing somewhere else, are found by pointing this at wherever
+     * they are.
+     */
+    public static List<AddTransferParams> scan(final File dir, final File scratchDir) {
         final List<AddTransferParams> found = new ArrayList<>();
-        final File dir = folder();
 
         if (dir == null) {
             return found;
         }
+
+        log.info("[incomplete] scanning {}", dir);
 
         final FileSystem fs = Platforms.fileSystem();
         final File[] entries = fs.listFiles(dir, ACCEPT_ALL);

@@ -49,7 +49,78 @@ public final class AndroidPaths {
         this.app = app;
     }
 
+    /**
+     * Where downloads are written.
+     * <p>
+     * The folder the user picks in Settings is honoured here. It used to be stored, shown
+     * in the wizard, shown in the settings summary, and used to report free space - and
+     * then ignored at the one moment it mattered, because this method returned the public
+     * download folder whatever it said. Picking an SD card did nothing.
+     * <p>
+     * The choice is only taken when the folder is actually usable, which is asked of the
+     * platform file system rather than of File: under scoped storage a folder granted
+     * through the document picker is writable through a descriptor while File.canWrite()
+     * says no. An unusable choice falls back to the platform default with a line in the
+     * log saying which and why, rather than failing every download silently.
+     */
     public File data() {
+        final File chosen = configured();
+        if (chosen != null) {
+            return chosen;
+        }
+
+        return platformDefault();
+    }
+
+    /**
+     * @return the configured download folder when it is set and usable, else null
+     */
+    private File configured() {
+        String path = null;
+
+        try {
+            path = ConfigurationManager.instance().getStoragePath();
+        } catch (Throwable t) {
+            // configuration not up yet - during very early startup
+            return null;
+        }
+
+        if (path == null || path.trim().isEmpty()) {
+            return null;
+        }
+
+        final File dir = new File(path);
+
+        if (dir.equals(platformDefault())) {
+            return dir;     // nothing to check, it is the fallback anyway
+        }
+
+        try {
+            final FileSystem fs = Platforms.fileSystem();
+
+            if (!fs.exists(dir) && !fs.mkdirs(dir)) {
+                LOG.warn("configured storage {} cannot be created, using the default", dir);
+                return null;
+            }
+
+            if (!fs.isDirectory(dir)) {
+                LOG.warn("configured storage {} is not a directory, using the default", dir);
+                return null;
+            }
+
+            if (!fs.canWrite(dir)) {
+                LOG.warn("configured storage {} is not writable, using the default", dir);
+                return null;
+            }
+
+            return dir;
+        } catch (Throwable t) {
+            LOG.warn("configured storage {} unusable ({}), using the default", dir, t.toString());
+            return null;
+        }
+    }
+
+    private File platformDefault() {
         if (SystemUtils.hasAndroid10OrNewer()) {
             if (SystemUtils.hasAndroid10()) {
                 return app.getExternalFilesDir(null);

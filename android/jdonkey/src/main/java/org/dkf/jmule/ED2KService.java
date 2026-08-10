@@ -912,8 +912,19 @@ public class ED2KService extends JobIntentService {
      * with which pieces it already has.
      */
     private void recoverIncompleteTransfers() {
+        recoverIncompleteTransfers(IncompleteFiles.folder());
+    }
+
+    /**
+     * The same over a folder of the caller's choosing, so unfinished downloads left
+     * somewhere else - by an older version writing straight into the download folder, or
+     * by another install - can be picked up on demand from Settings.
+     *
+     * @return how many transfers were added
+     */
+    public int recoverIncompleteTransfers(final File dir) {
         try {
-            final List<AddTransferParams> candidates = IncompleteFiles.scan(getCacheDir());
+            final List<AddTransferParams> candidates = IncompleteFiles.scan(dir, getCacheDir());
             int recovered = 0;
 
             for (final AddTransferParams atp : candidates) {
@@ -955,8 +966,10 @@ public class ED2KService extends JobIntentService {
             }
 
             sweepFinishedOutOfIncomplete();
+            return recovered;
         } catch (Throwable t) {
             log.error("[ED2K service] incomplete scan failed {}", t.toString());
+            return 0;
         }
     }
 

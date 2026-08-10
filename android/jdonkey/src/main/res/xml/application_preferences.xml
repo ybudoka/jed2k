@@ -176,6 +176,17 @@
          literal would have sent this button to the *other* app - or nowhere. It is
          wired up in SettingsActivity.setupAbout() instead, where the class reference
          resolves against whichever package is actually running. -->
+    <!-- Both wired in SettingsActivity, see setupRescan(). -->
+    <Preference
+            android:key="jmule.prefs.rescan_incomplete"
+            android:title="@string/rescan_incomplete"
+            android:summary="@string/rescan_incomplete_summary"/>
+
+    <Preference
+            android:key="jmule.prefs.rescan_folder"
+            android:title="@string/rescan_folder"
+            android:summary="@string/rescan_folder_summary"/>
+
     <!-- Wired in SettingsActivity.setupLogs(), for the same reason as the About entry
          below: an <intent> here cannot name the package, which carries a suffix in
          debug builds. -->

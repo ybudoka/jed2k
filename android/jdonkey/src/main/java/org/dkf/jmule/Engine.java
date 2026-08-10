@@ -463,6 +463,21 @@ public final class Engine implements AlertListener {
         if (service != null) service.searchMore();
     }
 
+    /**
+     * Looks through a folder for unfinished downloads the app does not know about and
+     * adds back the ones carrying a resume record.
+     *
+     * @param dir folder to look in, or null for the app's own Incomplete folder
+     * @return how many were added, or -1 when the service is not running
+     */
+    public int rescanIncomplete(final java.io.File dir) {
+        if (service == null) {
+            return -1;
+        }
+
+        return service.recoverIncompleteTransfers((dir != null) ? dir : IncompleteFiles.folder());
+    }
+
     public boolean hasTransfer(final Hash h) {
         if (service != null) return service.containsHash(h);
         return false;

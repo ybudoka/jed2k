@@ -51,7 +51,11 @@ final class ConfigurationDefaults {
     }
 
     private void load() {
-        defaultValues.put(Constants.PREF_KEY_STORAGE_PATH, Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS));
+        // A String, and only once. This key was put twice - first as a File object,
+        // which getString() cannot return, then as the storage root - so the effective
+        // default was /mnt/sdcard rather than the download folder.
+        defaultValues.put(Constants.PREF_KEY_STORAGE_PATH
+                , Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath());
         defaultValues.put(Constants.PREF_KEY_CORE_UUID, uuidToByteArray(UUID.randomUUID()));
         defaultValues.put(Constants.PREF_KEY_CORE_LAST_SEEN_VERSION, "");//won't know until I see it.
 
@@ -83,8 +87,6 @@ final class ConfigurationDefaults {
         defaultValues.put(Constants.PREF_KEY_NETWORK_BITTORRENT_ON_VPN_ONLY, false);
         defaultValues.put(Constants.PREF_KEY_NETWORK_MAX_CONCURRENT_UPLOADS, 3);
 
-
-        defaultValues.put(Constants.PREF_KEY_STORAGE_PATH, Environment.getExternalStorageDirectory().getAbsolutePath()); // /mnt/sdcard
 
         resetValue(Constants.PREF_KEY_SEARCH_COUNT_DOWNLOAD_FOR_TORRENT_DEEP_SCAN);
         resetValue(Constants.PREF_KEY_SEARCH_COUNT_ROUNDS_FOR_TORRENT_DEEP_SCAN);

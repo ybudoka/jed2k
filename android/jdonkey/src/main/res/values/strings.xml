@@ -311,6 +311,14 @@
     <string name="verify_mismatch">The file does not match its ed2k hash. Its content differs from the file that was requested - delete it and download it again.</string>
     <string name="verify_unreadable">The file could not be read to the end.</string>
 
+    <string name="rescan_incomplete">Rescan unfinished downloads</string>
+    <string name="rescan_incomplete_summary">Look through the Incomplete folder for downloads the app has lost track of</string>
+    <string name="rescan_folder">Scan another folder…</string>
+    <string name="rescan_folder_summary">Look for unfinished downloads somewhere else - an SD card, or a folder an earlier version wrote to</string>
+    <string name="rescan_found">Continuing %1$d unfinished download(s)</string>
+    <string name="rescan_none">No unfinished download was found that the app did not already have. A file can only be continued if the resume record written beside it is still there.</string>
+    <string name="rescan_not_running">Start the ED2K service first</string>
+
     <!-- search -->
     <string name="search_more_none">The server returned everything it had for this search</string>
     <string name="search_more_no_server">Not connected to a server</string>
