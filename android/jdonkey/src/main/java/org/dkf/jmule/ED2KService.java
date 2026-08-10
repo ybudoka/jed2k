@@ -872,7 +872,7 @@ public class ED2KService extends JobIntentService {
                 File file = null;
 
                 if (atp != null) {
-                    file = new File(atp.getFilepath().asString());
+                    file = relocate(new File(atp.getFilepath().asString()));
                     if (Platforms.get().saf()) {
                         log.info("[ED2k service] restore file {}", file.getName());
                         LollipopFileSystem fs = (LollipopFileSystem) Platforms.fileSystem();
@@ -890,6 +890,13 @@ public class ED2KService extends JobIntentService {
                         } else {
                             log.warn("[ED2K service] unable to restore transfer {}: file not exists", file);
                         }
+                    }
+
+                    // relocate() may have found it elsewhere; store that so the next
+                    // launch does not have to look again
+                    if (handle != null && !file.getAbsolutePath().equals(atp.getFilepath().asString())) {
+                        atp.getFilepath().assignString(file.getAbsolutePath());
+                        dbHelper.saveResumeData(atp);
                     }
                 }
 
@@ -922,6 +929,43 @@ public class ED2KService extends JobIntentService {
      * the folder is scanned and anything not already restored is added back, complete
      * with which pieces it already has.
      */
+    /**
+     * Finds a transfer's file when it is not where the record says.
+     * <p>
+     * A path recorded on one run is not guaranteed to resolve on the next: the download
+     * folder moves when the storage setting changes or when a previously chosen folder
+     * stops being writable, and unfinished downloads gained a subfolder of their own.
+     * The file name is the stable part, so it is looked for in the two folders it can
+     * be in before the transfer is written off - which is what "file not exists" used
+     * to mean, taking the download with it.
+     *
+     * @return the file where it actually is, or the original path when it is nowhere
+     */
+    private File relocate(final File recorded) {
+        final FileSystem fs = Platforms.fileSystem();
+
+        if (fs.exists(recorded)) {
+            return recorded;
+        }
+
+        final File[] candidates = { IncompleteFiles.folder(), Platforms.data() };
+
+        for (final File dir : candidates) {
+            if (dir == null || dir.equals(recorded.getParentFile())) {
+                continue;
+            }
+
+            final File moved = new File(dir, recorded.getName());
+            if (fs.exists(moved)) {
+                log.info("[ED2K service] {} is no longer at {}, found it in {}"
+                        , recorded.getName(), recorded.getParent(), dir);
+                return moved;
+            }
+        }
+
+        return recorded;
+    }
+
     private void recoverIncompleteTransfers() {
         recoverIncompleteTransfers(IncompleteFiles.folder());
     }

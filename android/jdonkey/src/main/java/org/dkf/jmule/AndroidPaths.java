@@ -69,18 +69,25 @@ public final class AndroidPaths {
      */
     public File data() {
         final File chosen = configured();
-        if (chosen != null) {
-            return chosen;
-        }
-
-        return platformDefault();
+        return (chosen != null) ? chosen : platformDefault();
     }
+
+    /**
+     * The setting the last decision was made for, and what it resolved to. data() is
+     * called constantly - by the incomplete folder, by the naming rule, by the free
+     * space readout - and the first version of this asked the file system whether the
+     * folder existed, was a directory and was writable on every one of those calls,
+     * logging a line each time it said no. Deciding once per value is enough; the value
+     * only changes when the user changes it.
+     */
+    private volatile String resolvedFor;
+    private volatile File resolved;
 
     /**
      * @return the configured download folder when it is set and usable, else null
      */
     private File configured() {
-        String path = null;
+        String path;
 
         try {
             path = ConfigurationManager.instance().getStoragePath();
@@ -93,8 +100,35 @@ public final class AndroidPaths {
             return null;
         }
 
-        final File dir = new File(path);
+        // The old default for this setting was the storage root, written by a bug that
+        // put the key twice. It is not a folder anything may write to on a modern
+        // Android, it was never a choice anybody made, and leaving it in place means
+        // Settings shows a folder that does nothing. Clear it rather than work around
+        // it for ever.
+        if (path.equals(legacyBadDefault())) {
+            LOG.info("clearing the legacy storage setting {}, it was never usable", path);
+            try {
+                ConfigurationManager.instance().setStoragePath(platformDefault().getAbsolutePath());
+            } catch (Throwable t) {
+                LOG.warn("unable to clear the legacy storage setting {}", t.toString());
+            }
+            return null;
+        }
 
+        if (path.equals(resolvedFor)) {
+            return resolved;
+        }
+
+        final File dir = new File(path);
+        resolvedFor = path;
+        resolved = probe(dir);
+        return resolved;
+    }
+
+    /**
+     * @return dir when it can be written to, else null - logged once per setting value
+     */
+    private File probe(final File dir) {
         if (dir.equals(platformDefault())) {
             return dir;     // nothing to check, it is the fallback anyway
         }
@@ -117,9 +151,18 @@ public final class AndroidPaths {
                 return null;
             }
 
+            LOG.info("downloads go to the configured storage {}", dir);
             return dir;
         } catch (Throwable t) {
             LOG.warn("configured storage {} unusable ({}), using the default", dir, t.toString());
+            return null;
+        }
+    }
+
+    private static String legacyBadDefault() {
+        try {
+            return Environment.getExternalStorageDirectory().getAbsolutePath();
+        } catch (Throwable t) {
             return null;
         }
     }
