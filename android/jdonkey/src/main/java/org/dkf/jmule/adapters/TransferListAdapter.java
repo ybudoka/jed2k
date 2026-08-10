@@ -279,6 +279,10 @@ public class TransferListAdapter extends BaseExpandableListAdapter {
         // only useful while there is still something to download
         if (!download.isComplete()) {
             items.add(new FindMoreSourcesMenuAction(context.get(), download));
+        } else {
+            // pieces are checked as they arrive, so this is about everything that
+            // happens outside that path - see VerifyTransferMenuAction
+            items.add(new VerifyTransferMenuAction(context.get(), download));
         }
 
         items.add(new CancelMenuAction(context.get(), download, !download.isComplete()));

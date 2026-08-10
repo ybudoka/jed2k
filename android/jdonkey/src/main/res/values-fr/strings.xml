@@ -276,6 +276,14 @@
 
     <string name="list_item_menu">Autres actions</string>
 
+    <string name="transfers_context_menu_verify">Vérifier le fichier</string>
+    <string name="verify_running">Vérification</string>
+    <string name="verify_ok_title">Fichier vérifié</string>
+    <string name="verify_ok">Le fichier correspond à son empreinte ed2k. C\'est exactement le fichier demandé.</string>
+    <string name="verify_failed_title">Échec de la vérification</string>
+    <string name="verify_mismatch">Le fichier ne correspond pas à son empreinte ed2k. Son contenu diffère du fichier demandé : supprimez-le et retéléchargez-le.</string>
+    <string name="verify_unreadable">Le fichier n\'a pas pu être lu jusqu\'au bout.</string>
+
     <!-- recherche -->
     <string name="search_more_none">Le serveur a renvoyé tout ce qu\'il avait pour cette recherche</string>
     <string name="search_more_no_server">Aucun serveur connecté</string>

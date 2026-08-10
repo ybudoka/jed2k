@@ -303,6 +303,14 @@
 
     <string name="list_item_menu">More actions</string>
 
+    <string name="transfers_context_menu_verify">Verify file</string>
+    <string name="verify_running">Verifying</string>
+    <string name="verify_ok_title">File verified</string>
+    <string name="verify_ok">The file matches its ed2k hash. It is exactly the file that was requested.</string>
+    <string name="verify_failed_title">Verification failed</string>
+    <string name="verify_mismatch">The file does not match its ed2k hash. Its content differs from the file that was requested - delete it and download it again.</string>
+    <string name="verify_unreadable">The file could not be read to the end.</string>
+
     <!-- search -->
     <string name="search_more_none">The server returned everything it had for this search</string>
     <string name="search_more_no_server">Not connected to a server</string>
