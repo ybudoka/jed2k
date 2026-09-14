@@ -870,6 +870,7 @@ public class PeerConnection extends Connection {
         if (transfer.getPicker().isBlockDownloaded(blockFinished)) {
             log.warn("{} request {} references to downloaded block {}, remove pending block and skip data", getEndpoint(), recvReq, blockFinished);
             downloadQueue.remove(pb);
+            releaseBuffer(pb);
             skipData();
             return;
         }
@@ -921,6 +922,7 @@ public class PeerConnection extends Connection {
                         log.warn("{} block {} wasn't downloading, do not write"
                             , getEndpoint()
                             , pb.block);
+                        releaseBuffer(pb);
                     }
 
                     // write block to disk here
@@ -1078,15 +1080,28 @@ public class PeerConnection extends Connection {
             while(!downloadQueue.isEmpty()) {
                 PendingBlock pb = downloadQueue.poll();
                 picker.abortDownload(pb.block, getPeer());
-                if (pb.buffer != null) {
-                    pb.buffer.clear();
-                    session.getBufferPool().deallocate(pb.buffer, Time.currentTime());
-                }
+                releaseBuffer(pb);
             }
         }
         else {
-            downloadQueue.clear();
+            while(!downloadQueue.isEmpty()) {
+                releaseBuffer(downloadQueue.poll());
+            }
         }
+    }
+
+    /**
+     * return the pending block's buffer to the session pool
+     * every pending block that leaves the download queue without going through
+     * asyncWrite() must pass here: a buffer dropped anywhere else is lost for the rest
+     * of the session and the pool ends up refusing allocations with NO_MEMORY
+     * @param pb pending block being discarded
+     */
+    private void releaseBuffer(final PendingBlock pb) {
+        if (pb == null || pb.buffer == null) return;
+        pb.buffer.clear();
+        session.getBufferPool().deallocate(pb.buffer, Time.currentTime());
+        pb.buffer = null;
     }
 
     BitField getRemotePieces() {

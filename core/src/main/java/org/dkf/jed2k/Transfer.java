@@ -416,9 +416,11 @@ public class Transfer {
         // policy will know transfer is finished automatically via call isFinished on transfer
         // async release file
         setState(TransferStatus.TransferState.FINISHED);
+        // the finished alert is raised from onReleaseFile(), once the file is closed:
+        // anything acting on the alert (moving or scanning the file) must not race the
+        // disk thread that still owns it
         session.submitDiskTask(new AsyncRelease(this, false));
         needSaveResumeData = true;
-        session.pushAlert(new TransferFinishedAlert(getHash()));
     }
 
     public void onBlockWriteCompleted(final PieceBlock b, final List<ByteBuffer> buffers, final BaseErrorCode ec) {
@@ -513,6 +515,12 @@ public class Transfer {
         }
 
         log.debug("buffers status: {}", session.getBufferPool().toString());
+
+        // file released because the transfer completed (not aborted/removed): now it is
+        // safe for listeners to touch the file on disk
+        if (!deleteFile && !abort && isFinished()) {
+            session.pushAlert(new TransferFinishedAlert(getHash()));
+        }
     }
 
     /**
