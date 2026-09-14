@@ -604,6 +604,11 @@ public final class SearchFragment extends AbstractFragment implements
     }
 
     @Override
+    public void onTransferVerified(TransferVerifiedAlert alert) {
+        // do nothing, the transfers screen and the notification report the outcome
+    }
+
+    @Override
     public void onPortMapAlert(PortMapAlert alert) {
 
     }

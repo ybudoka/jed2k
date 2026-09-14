@@ -419,6 +419,21 @@ public final class TransferManager {
             return State.NONE;
         }
 
+        @Override
+        public void verify() {
+
+        }
+
+        @Override
+        public boolean isVerifying() {
+            return false;
+        }
+
+        @Override
+        public int getVerifyProgress() {
+            return 0;
+        }
+
         void shuffle() {
             boolean remove = rnd.nextBoolean();
             if (remove && !info.isEmpty()) {

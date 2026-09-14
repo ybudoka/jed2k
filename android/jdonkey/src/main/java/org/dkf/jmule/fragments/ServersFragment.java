@@ -308,6 +308,11 @@ public class ServersFragment extends AbstractFragment implements MainFragment, A
     }
 
     @Override
+    public void onTransferVerified(TransferVerifiedAlert alert) {
+        // do nothing not interested in transfer's state
+    }
+
+    @Override
     public void onPortMapAlert(PortMapAlert alert) {
 
     }
