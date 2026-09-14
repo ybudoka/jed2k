@@ -25,6 +25,13 @@ public class PeerInfo {
     private String strModVersion;
     private int sourceFlag;
 
+    /**
+     * Name this peer advertises for the file, from its OP_REQFILENAMEANSWER.
+     * Sources routinely know the same hash under different names, so this is per
+     * peer rather than per transfer. Null until the peer answers.
+     */
+    private String fileName;
+
     public PeerInfo() {
     }
 
@@ -184,5 +191,13 @@ public class PeerInfo {
 
     public String toString() {
         return "PeerInfo(downloadSpeed=" + this.getDownloadSpeed() + ", payloadDownloadSpeed=" + this.getPayloadDownloadSpeed() + ", downloadPayload=" + this.getDownloadPayload() + ", downloadProtocol=" + this.getDownloadProtocol() + ", remotePieces=" + this.getRemotePieces() + ", failCount=" + this.getFailCount() + ", endpoint=" + this.getEndpoint() + ", modName=" + this.getModName() + ", version=" + this.getVersion() + ", modVersion=" + this.getModVersion() + ", strModVersion=" + this.getStrModVersion() + ", sourceFlag=" + this.getSourceFlag() + ")";
+    }
+
+    public String getFileName() {
+        return this.fileName;
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
     }
 }

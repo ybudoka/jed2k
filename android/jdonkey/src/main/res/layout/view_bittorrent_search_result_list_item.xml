@@ -18,124 +18,160 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-  Rebuilt as nested LinearLayouts.
+  A search hit, drawn as a card.
 
-  The previous RelativeLayout positioned both the "Ad" badge and the file size with
-  layout_below="@id/..._title", so the two occupied exactly the same slot and drew on
-  top of each other - only the fact that the badge is force-hidden from code kept that
-  invisible. The row also had no padding of its own, so the title butted straight up
-  against the icon on the left and the screen edge on the right, and the title was
-  wrap_content with no ellipsize, which clipped long file names mid-glyph.
+  The outer FrameLayout exists only to space the cards apart. A ListView gives its
+  items AbsListView.LayoutParams, which has no margins at all, so layout_margin on a
+  row root is silently dropped - padding on a wrapper is the way to put air between
+  rows.
+
+  The card carries the pressed/hovered background, but the click listener is set on the
+  root by AbstractListAdapter, so it takes its state from the parent with
+  duplicateParentState rather than being clickable in its own right.
 -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@color/body_background_white"
-    android:baselineAligned="false"
-    android:orientation="horizontal">
-
-    <ImageView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_vertical"
-        android:contentDescription="@null"
-        android:paddingLeft="12dp"
-        android:paddingRight="12dp"
-        android:scaleType="fitCenter"
-        android:src="@drawable/download_icon" />
+    android:paddingLeft="@dimen/card_gutter"
+    android:paddingRight="@dimen/card_gutter"
+    android:paddingTop="@dimen/card_gap">
 
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_vertical"
-        android:layout_weight="1"
-        android:background="@drawable/listview_item_press_background_selector"
-        android:orientation="vertical"
-        android:paddingBottom="12dp"
-        android:paddingRight="14dp"
-        android:paddingEnd="14dp"
-        android:paddingTop="12dp">
+        android:background="@drawable/card_selector"
+        android:baselineAligned="false"
+        android:addStatesFromChildren="true"
+        android:orientation="horizontal"
+        android:padding="@dimen/card_padding">
 
-        <TextView
-            android:id="@+id/view_bittorrent_search_result_list_item_title"
-            style="@style/ListItemTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ellipsize="middle"
-            tools:text="@string/dummy_title" />
+        <ImageView
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginEnd="@dimen/card_padding"
+            android:layout_marginRight="@dimen/card_padding"
+            android:contentDescription="@null"
+            android:scaleType="fitCenter"
+            android:tint="@color/icon_tint"
+            android:src="@drawable/download_icon" />
 
-        <TextView
-            android:id="@+id/view_bittorrent_search_result_list_item_ad_indicator"
-            style="@style/ListItemAd"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Ad"
-            android:visibility="gone"
-            tools:ignore="HardcodedText" />
-
-        <!-- size + extension -->
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:orientation="horizontal">
+            android:layout_gravity="center_vertical"
+            android:layout_weight="1"
+            android:orientation="vertical">
 
             <TextView
-                android:id="@+id/view_bittorrent_search_result_list_item_file_size"
-                style="@style/ListItemSize"
+                android:id="@+id/view_bittorrent_search_result_list_item_title"
+                style="@style/ListItemTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="middle"
+                tools:text="@string/dummy_title" />
+
+            <TextView
+                android:id="@+id/view_bittorrent_search_result_list_item_ad_indicator"
+                style="@style/ListItemAd"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                tools:text="@string/dummy_size" />
+                android:layout_marginTop="4dp"
+                android:text="Ad"
+                android:visibility="gone"
+                tools:ignore="HardcodedText" />
 
-            <TextView
-                android:id="@+id/view_bittorrent_search_result_list_item_text_extra"
-                style="@style/ListItemExt"
-                android:layout_width="0dp"
+            <!-- size + extension -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginLeft="6dp"
-                android:layout_marginStart="6dp"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                tools:text="@string/dummy_extra" />
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/view_bittorrent_search_result_list_item_file_size"
+                    style="@style/ListItemSize"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    tools:text="@string/dummy_size" />
+
+                <TextView
+                    android:id="@+id/view_bittorrent_search_result_list_item_text_extra"
+                    style="@style/ListItemExt"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="8dp"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    tools:text="@string/dummy_extra" />
+            </LinearLayout>
+
+            <!-- source + sources count + completion -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/view_bittorrent_search_result_list_item_text_source"
+                    style="@style/SearchResultListItemSource"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/pill_background"
+                    android:paddingBottom="3dp"
+                    android:paddingLeft="9dp"
+                    android:paddingRight="9dp"
+                    android:paddingTop="3dp"
+                    tools:text="@string/dummy_engine" />
+
+                <TextView
+                    android:id="@+id/view_bittorrent_search_result_list_item_text_seeds"
+                    style="@style/ListItemExtra"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="10dp"
+                    android:layout_marginStart="10dp"
+                    tools:text="@string/search_item_sources" />
+
+                <TextView
+                    android:id="@+id/view_bittorrent_search_result_list_item_text_comp_percent"
+                    style="@style/ListItemExtra"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="10dp"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    tools:text="@string/complete_sources" />
+            </LinearLayout>
+
         </LinearLayout>
 
-        <!-- source + sources count + completion -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="3dp"
-            android:orientation="horizontal">
+        <!--
+          The row's actions used to be reachable only by long-pressing it. That is an
+          awkward gesture with a pointer you have to hold steady - a headset
+          controller's raycast, a mouse - and it is invisible to anyone who does not
+          already know it is there. The button does the same thing with one click; long
+          press still works.
 
-            <TextView
-                android:id="@+id/view_bittorrent_search_result_list_item_text_source"
-                style="@style/SearchResultListItemSource"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                tools:text="@string/dummy_engine" />
-
-            <TextView
-                android:id="@+id/view_bittorrent_search_result_list_item_text_seeds"
-                style="@style/ListItemExtra"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="8dp"
-                android:layout_marginStart="8dp"
-                tools:text="@string/search_item_sources" />
-
-            <TextView
-                android:id="@+id/view_bittorrent_search_result_list_item_text_comp_percent"
-                style="@style/ListItemExtra"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="8dp"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                tools:text="@string/complete_sources" />
-        </LinearLayout>
+          48dp is the smallest target that stays comfortable when it is aimed at rather
+          than touched.
+        -->
+        <ImageButton
+            android:id="@+id/view_bittorrent_search_result_list_item_menu"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center_vertical"
+            android:background="@drawable/round_button_selector"
+            android:contentDescription="@string/list_item_menu"
+            android:focusable="true"
+            android:scaleType="center"
+            android:src="@drawable/ic_more_vert_black_24dp" />
 
     </LinearLayout>
 
-</LinearLayout>
+</FrameLayout>

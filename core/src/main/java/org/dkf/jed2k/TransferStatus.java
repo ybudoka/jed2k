@@ -21,6 +21,10 @@ public class TransferStatus {
     };
 
     public TransferState state = TransferState.LOADING_RESUME_DATA;
+    /**
+     * percent of pieces checked while state is VERIFYING, 0 otherwise
+     */
+    public int verifyProgress = 0;
     public boolean paused;
     public float progress   = 0f;
     public int progressPPM          = 0;

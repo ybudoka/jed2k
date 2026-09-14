@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Background for a round icon button sitting inside a card. It has to be its own shape
+  rather than the card selector: a 48dp square with a 12dp corner radius on top of a
+  card reads as a misaligned second card.
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape android:shape="oval">
+            <solid android:color="@color/app_card_pressed" />
+        </shape>
+    </item>
+    <item android:state_hovered="true">
+        <shape android:shape="oval">
+            <solid android:color="@color/app_card_hovered" />
+        </shape>
+    </item>
+    <item android:state_focused="true">
+        <shape android:shape="oval">
+            <solid android:color="@color/app_card_hovered" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="@android:color/transparent" />
+        </shape>
+    </item>
+</selector>

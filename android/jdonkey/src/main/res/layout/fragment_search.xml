@@ -89,11 +89,20 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"/>
 
+            <!-- divider/dividerHeight are off: the cards space themselves, and a
+                 hairline between two floating cards reads as a mistake. clipToPadding
+                 keeps the bottom card clear of the edge while still scrolling under
+                 it. -->
             <ListView
                     android:id="@+id/fragment_search_list"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:background="@color/body_background_white"
+                    android:background="@color/app_page_background"
+                    android:clipToPadding="false"
+                    android:divider="@null"
+                    android:dividerHeight="0dp"
+                    android:paddingBottom="@dimen/card_gap"
+                    android:scrollbarStyle="outsideOverlay"
                     android:fastScrollEnabled="true"/>
         </FrameLayout>
     </org.dkf.jmule.views.SwipeLayout>

@@ -147,7 +147,7 @@
     <string name="transfer_state_paused">Пауза</string>
     <string name="transfer_state_stalled">Ожидает источников</string>
     <string name="transfer_state_verifying">Проверка</string>
-    <string name="verify_transfer_menu_action">Проверить и восстановить</string>
+    <string name="transfers_context_menu_verify">Проверить и восстановить</string>
     <string name="transfer_verify_started">Файл проверяется на диске, повреждённые части будут загружены заново</string>
     <string name="transfer_verify_already_running">Проверка уже выполняется</string>
     <string name="transfer_verify_ok">Файл проверен: все %1$d частей в порядке</string>

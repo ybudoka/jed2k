@@ -3,11 +3,17 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="org.dkf.jmule"
     android:installLocation="auto"
-    android:versionCode="38"
-    android:versionName="38">
+    android:versionCode="39"
+    android:versionName="39">
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <!-- UPnP gateway discovery is SSDP, which is multicast, and the Wi-Fi driver
+         filters multicast unless a MulticastLock is held. Without this the search
+         goes out and the router's reply never reaches the app, which reads as
+         "No gateway device found" - and no port mapping means a Low ID.
+         See org.dkf.jmule.util.MulticastLease. -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
@@ -27,18 +33,56 @@
          are silently dropped -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
+    <!--
+      Hardware the app does not actually need.
+
+      Android treats android.hardware.touchscreen as *required* when a manifest says
+      nothing about it, and ACCESS_WIFI_STATE implicitly requires android.hardware.wifi.
+      That is fine on a phone and wrong here: this is a network client driven entirely
+      through ordinary widgets, and it should stay installable on devices with no
+      touchscreen - Meta Quest and other Horizon OS headsets, Android TV, Chromebooks -
+      where input arrives as pointer/controller events that the framework delivers as
+      touch anyway.
+
+      None of this changes behaviour on a phone; it only stops the package manager and
+      the stores from filtering the app off hardware it runs on perfectly well.
+    -->
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
+    <uses-feature android:name="android.hardware.touchscreen.multitouch" android:required="false"/>
+    <uses-feature android:name="android.hardware.faketouch" android:required="false"/>
+    <uses-feature android:name="android.hardware.wifi" android:required="false"/>
+    <uses-feature android:name="android.hardware.telephony" android:required="false"/>
+    <uses-feature android:name="android.hardware.location" android:required="false"/>
+    <uses-feature android:name="android.hardware.location.gps" android:required="false"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <uses-feature android:name="android.hardware.microphone" android:required="false"/>
+
+    <!--
+      Window resizing is handled in place rather than by rebuilding the activity - see
+      the configChanges on each one below. On a headset the app lives in a floating
+      panel the user drags to whatever size suits them, and every one of those drags
+      used to destroy and recreate the activity, taking the search results, the scroll
+      position and any open dialog with it.
+
+      uiMode and density are deliberately left off the list. A system-wide switch to
+      dark mode has to rebuild for the night resources to be picked up, and a real
+      density change has to rebuild for sp and dp to mean the right thing again -
+      views already inflated keep the sizes they were measured at.
+    -->
     <application
         android:name="org.dkf.jmule.MainApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
+        android:label="${appLabel}"
         android:theme="@style/Theme.FrostWire"
         android:requestLegacyExternalStorage="true"
+        android:localeConfig="@xml/locales_config"
+        android:resizeableActivity="true"
         android:networkSecurityConfig="@xml/network_security_config">
 
         <activity
             android:name="org.dkf.jmule.activities.SplashActivity"
-            android:label="@string/app_name"
+            android:label="${appLabel}"
             android:theme="@style/SplashTheme"
             android:exported="true">
             <intent-filter>
@@ -49,7 +93,8 @@
 
         <activity
             android:name="org.dkf.jmule.activities.MainActivity"
-            android:label="@string/app_name"
+            android:label="${appLabel}"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboard|keyboardHidden|navigation"
             android:exported="true">
             <intent-filter>
                 <action android:name="org.dkf.jmule.android.ACTION_SHOW_TRANSFERS" />
@@ -89,15 +134,26 @@
         </activity>
 
         <activity android:name="org.dkf.jmule.activities.AboutActivity"
-                  android:label="@string/about"/>
+                  android:label="@string/about"
+                  android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboard|keyboardHidden|navigation"/>
+
+        <activity android:name="org.dkf.jmule.activities.LogsActivity"
+                  android:label="@string/logs"
+                  android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboard|keyboardHidden|navigation"/>
+
+        <activity android:name="org.dkf.jmule.activities.FoldersActivity"
+                  android:label="@string/folders"
+                  android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboard|keyboardHidden|navigation"/>
 
         <activity android:name="org.dkf.jmule.activities.SettingsActivity"
                   android:label="@string/activity_preferences_name"
+                  android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboard|keyboardHidden|navigation"
                   android:theme="@style/Preferences"/>
 
         <activity
             android:name="org.dkf.jmule.activities.WizardActivity"
-            android:label="@string/app_name"
+            android:label="${appLabel}"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboard|keyboardHidden|navigation"
             android:theme="@style/WizardActivity" />
 
         <provider

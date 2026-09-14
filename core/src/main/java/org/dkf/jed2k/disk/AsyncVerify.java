@@ -33,7 +33,12 @@ public class AsyncVerify extends TransferCallable<AsyncOperationResult> {
         PieceManager pm = getTransfer().getPieceManager();
         List<ByteBuffer> buffers = pm.abort();
         try {
-            BitField good = pm.verifyPieces(hashes, fileSize);
+            BitField good = pm.verifyPieces(hashes, fileSize, new PieceManager.VerifyProgress() {
+                @Override
+                public void onPieceChecked(int done, int total) {
+                    getTransfer().setVerifyProgress(done, total);
+                }
+            });
             return new AsyncVerifyResult(getTransfer(), good, buffers, ErrorCode.NO_ERROR);
         } catch(JED2KException e) {
             return new AsyncVerifyResult(getTransfer(), new BitField(hashes.size()), buffers, e.getErrorCode());

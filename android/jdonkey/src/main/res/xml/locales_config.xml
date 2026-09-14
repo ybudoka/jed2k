@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Declares the languages the app ships, which is what lets Android 13 and later
+  show a per-app language entry under Settings > Apps > Mule > Language.
+
+  Without it the app only ever follows the device language, so getting the French
+  UI on a headset or phone that is set to English would mean switching the whole
+  device over.
+
+  Keep this in step with the values-*/ folders. The first entry is the base
+  values/strings.xml, which is English.
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en"/>
+    <locale android:name="fr"/>
+    <locale android:name="es"/>
+    <locale android:name="it"/>
+    <locale android:name="ru"/>
+    <locale android:name="zh-CN"/>
+</locale-config>

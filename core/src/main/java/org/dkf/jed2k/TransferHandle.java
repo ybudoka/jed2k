@@ -131,6 +131,30 @@ public class TransferHandle implements Comparable<TransferHandle> {
         }
     }
 
+    /**
+     * the finished file was moved on disk: make the transfer follow it, so verify and
+     * repair (and any later write) hits the right path
+     */
+    public final void retargetFile(final File target) {
+        Transfer t = transfer.get();
+        if (t != null) {
+            synchronized (ses) {
+                t.retargetFile(target);
+            }
+        }
+    }
+
+    public final int getVerifyProgress() {
+        Transfer t = transfer.get();
+        if (t != null) {
+            synchronized (ses) {
+                return t.getVerifyProgress();
+            }
+        }
+
+        return 0;
+    }
+
     public final boolean isVerifying() {
         boolean res = false;
         Transfer t = transfer.get();
@@ -187,6 +211,36 @@ public class TransferHandle implements Comparable<TransferHandle> {
         }
 
         return new LinkedList<PeerInfo>();
+    }
+
+    /**
+     * Re-asks the server and KAD for sources without waiting for the back-off timers.
+     *
+     * @return false when nothing was scheduled - see {@link Transfer#requestMoreSources}
+     */
+    public boolean requestMoreSources() {
+        Transfer t = transfer.get();
+        if (t != null) {
+            synchronized (ses) {
+                return t.requestMoreSources();
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return the distinct names sources have advertised for this file
+     */
+    public List<String> getRemoteFileNames() {
+        Transfer t = transfer.get();
+        if (t != null) {
+            synchronized (ses) {
+                return t.getRemoteFileNames();
+            }
+        }
+
+        return new LinkedList<String>();
     }
 
     @Override

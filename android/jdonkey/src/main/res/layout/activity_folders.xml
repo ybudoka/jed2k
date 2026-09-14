@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Folders screen. Few rows, rebuilt in one pass, so a ScrollView with a LinearLayout
+  rather than a ListView and an adapter.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/app_page_background">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="@dimen/card_gap">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!--
+              Said up front rather than discovered later: this client downloads and does
+              not upload, so none of these folders is offered to anyone.
+            -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/card_gap"
+                android:layout_marginLeft="@dimen/card_gutter"
+                android:layout_marginRight="@dimen/card_gutter"
+                android:background="@drawable/card_surface"
+                android:padding="@dimen/card_padding"
+                android:textColor="@color/app_text_secondary"
+                android:textSize="@dimen/text_x_small"
+                android:text="@string/folders_explanation" />
+
+            <LinearLayout
+                android:id="@+id/activity_folders_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+        </LinearLayout>
+
+    </ScrollView>
+
+    <Button
+        android:id="@+id/activity_folders_add"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/folders_add" />
+
+</LinearLayout>

@@ -346,7 +346,7 @@ public final class Engine implements AlertListener {
 
                         // sync properties here
                         setListenPort((int) ConfigurationManager.instance().getLong(Constants.PREF_KEY_LISTEN_PORT));
-                        setMaxPeersCount((int) ConfigurationManager.instance().getLong(Constants.PREF_KEY_TRANSFER_MAX_TOTAL_CONNECTIONS));
+                        setMaxConnections((int) ConfigurationManager.instance().getLong(Constants.PREF_KEY_TRANSFER_MAX_TOTAL_CONNECTIONS));
                         setNickname(ConfigurationManager.instance().getString(Constants.PREF_KEY_NICKNAME));
                         setVibrateOnDownloadCompleted(ConfigurationManager.instance().vibrateOnFinishedDownload());
                         setPermanentNotification(ConfigurationManager.instance().getBoolean(Constants.PREF_KEY_GUI_ENABLE_PERMANENT_STATUS_NOTIFICATION));
@@ -469,6 +469,21 @@ public final class Engine implements AlertListener {
         if (service != null) service.searchMore();
     }
 
+    /**
+     * Looks through a folder for unfinished downloads the app does not know about and
+     * adds back the ones carrying a resume record.
+     *
+     * @param dir folder to look in, or null for the app's own Incomplete folder
+     * @return how many were added, or -1 when the service is not running
+     */
+    public int rescanIncomplete(final java.io.File dir) {
+        if (service == null) {
+            return -1;
+        }
+
+        return service.recoverIncompleteTransfers((dir != null) ? dir : IncompleteFiles.folder());
+    }
+
     public boolean hasTransfer(final Hash h) {
         if (service != null) return service.containsHash(h);
         return false;
@@ -545,7 +560,7 @@ public final class Engine implements AlertListener {
     public void setListenPort(int port) { if (service != null) service.setListenPort(port); }
     public void setReconnectToServer(boolean value) { if (service != null) service.setServerReconnect(value); }
     public void setServerPing(boolean value) { if (service != null) service.setServerPing(value); }
-    public void setMaxPeersCount(int peers) { if (service != null) service.setMaxPeerListSize(peers); }
+    public void setMaxConnections(int maxConnections) { if (service != null) service.setMaxConnections(maxConnections); }
     public void forwardPorts(boolean forward) { if (service != null) service.setForwardPort(forward);}
     public void useDht(boolean dht) {
         log.info("[engine] use dht {}", dht);

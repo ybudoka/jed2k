@@ -92,6 +92,18 @@ public abstract class FileHandler {
         return file;
     }
 
+    /**
+     * point the handler at the file's new location after it was moved on disk
+     * only for a released file: open channels are closed and re-opened lazily on the
+     * new path, nothing in flight is expected
+     * @param target new location of the same content
+     */
+    public void retarget(final File target) {
+        assert target != null;
+        close();
+        file = target;
+    }
+
 
     protected abstract FileOutputStream allocateOutputStream() throws JED2KException;
     protected abstract FileInputStream allocateInputStream() throws JED2KException;

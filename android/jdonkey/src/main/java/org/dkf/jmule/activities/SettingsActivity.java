@@ -45,8 +45,12 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ListAdapter;
 
+import android.net.Uri;
+
 import org.dkf.jmule.AndroidPlatform;
 import org.dkf.jmule.ConfigurationManager;
+import org.dkf.jmule.LollipopFileSystem;
+import org.dkf.jmule.Platforms;
 import org.dkf.jmule.Constants;
 import org.dkf.jmule.ED2KService;
 import org.dkf.jmule.Engine;
@@ -58,6 +62,8 @@ import org.dkf.jmule.views.preference.NumberPickerPreference;
 import org.dkf.jmule.views.preference.StoragePreference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
 
 /**
  * See {@link ConfigurationManager}
@@ -137,6 +143,121 @@ public class SettingsActivity extends PreferenceActivity {
         useWordsFilterCheckbox();
         shareMediaDownloadsCheckbox();
         setupThemeOption();
+        setupRescan();
+        setupLogs();
+        setupAbout();
+    }
+
+    /**
+     * Distinct from StoragePicker's own code so onActivityResult can tell "the user
+     * picked a download folder" from "the user picked a folder to scan".
+     */
+    private static final int SCAN_FOLDER_REQUEST_CODE = 1267124;
+
+    /**
+     * Two ways to pick up unfinished downloads the app has lost track of.
+     * <p>
+     * The app's private database is what normally remembers them, and it does not
+     * survive a reinstall, a "clear data", or a second install of the app sharing the
+     * same download folder. The resume record written next to each unfinished file does,
+     * so a folder can be re-read at any time - the app's own Incomplete folder, or one
+     * the user points at.
+     */
+    private void setupRescan() {
+        Preference folders = findPreference("jmule.prefs.show_folders");
+        if (folders != null) {
+            folders.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+                @Override
+                public boolean onPreferenceClick(Preference preference) {
+                    startActivity(new Intent(SettingsActivity.this, FoldersActivity.class));
+                    return true;
+                }
+            });
+        }
+
+        Preference rescan = findPreference("jmule.prefs.rescan_incomplete");
+        if (rescan != null) {
+            rescan.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+                @Override
+                public boolean onPreferenceClick(Preference preference) {
+                    runRescan(null);
+                    return true;
+                }
+            });
+        }
+
+        Preference pick = findPreference("jmule.prefs.rescan_folder");
+        if (pick != null) {
+            pick.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+                @Override
+                public boolean onPreferenceClick(Preference preference) {
+                    Intent intent = new Intent(StoragePicker.ACTION_OPEN_DOCUMENT_TREE);
+                    intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
+                    intent.putExtra("android.content.extra.SHOW_ADVANCED", true);
+                    startActivityForResult(intent, SCAN_FOLDER_REQUEST_CODE);
+                    return true;
+                }
+            });
+        }
+    }
+
+    /**
+     * @param dir folder to look in, or null for the app's Incomplete folder
+     */
+    private void runRescan(final File dir) {
+        final int recovered = Engine.instance().rescanIncomplete(dir);
+
+        if (recovered < 0) {
+            UIUtils.showLongMessage(this, R.string.rescan_not_running);
+            return;
+        }
+
+        if (recovered == 0) {
+            UIUtils.showInformationDialog(this, R.string.rescan_none
+                    , R.string.rescan_incomplete, false, null);
+            return;
+        }
+
+        UIUtils.showLongMessage(this, getString(R.string.rescan_found, recovered));
+    }
+
+    /**
+     * Opens the log screen. Same explicit-Intent treatment as the About entry.
+     */
+    private void setupLogs() {
+        Preference logs = findPreference("jmule.prefs.show_logs");
+        if (logs == null) {
+            return;
+        }
+
+        logs.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                startActivity(new Intent(SettingsActivity.this, LogsActivity.class));
+                return true;
+            }
+        });
+    }
+
+    /**
+     * Opens the About screen. Previously an <intent> element in
+     * application_preferences.xml with a hardcoded android:targetPackage, which breaks
+     * as soon as the applicationId carries a suffix. An explicit Intent built from the
+     * class resolves against whichever package is running.
+     */
+    private void setupAbout() {
+        Preference about = findPreference("jmule.prefs.show_about");
+        if (about == null) {
+            return;
+        }
+
+        about.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                startActivity(new Intent(SettingsActivity.this, AboutActivity.class));
+                return true;
+            }
+        });
     }
 
     /**
@@ -200,7 +321,7 @@ public class SettingsActivity extends PreferenceActivity {
                 @Override
                 public boolean onPreferenceChange(Preference preference, Object newValue) {
                     LOG.info("explicit setup total connections to {}", (int)newValue);
-                    Engine.instance().setMaxPeersCount((int)newValue);
+                    Engine.instance().setMaxConnections((int)newValue);
                     Engine.instance().configureServices();
                     return true;
                 }
@@ -451,12 +572,43 @@ public class SettingsActivity extends PreferenceActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-       if (requestCode == StoragePicker.SELECT_FOLDER_REQUEST_CODE) {
+        if (requestCode == SCAN_FOLDER_REQUEST_CODE) {
+            runRescan(folderFromTree(resultCode, data));
+        }
+        else if (requestCode == StoragePicker.SELECT_FOLDER_REQUEST_CODE) {
             StoragePreference.onDocumentTreeActivityResult(this, requestCode, resultCode, data);
         }
         else {
             super.onActivityResult(requestCode, resultCode, data);
         }
+    }
+
+    /**
+     * Turns the document tree the picker returns back into a path the scan can read.
+     * Returns null when the user backed out or the tree cannot be resolved, in which
+     * case the scan falls back to the Incomplete folder.
+     */
+    private File folderFromTree(int resultCode, Intent data) {
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+            return null;
+        }
+
+        try {
+            final Uri tree = data.getData();
+            getContentResolver().takePersistableUriPermission(tree
+                    , data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            | Intent.FLAG_GRANT_WRITE_URI_PERMISSION));
+
+            if (AndroidPlatform.saf()) {
+                LollipopFileSystem fs = (LollipopFileSystem) Platforms.fileSystem();
+                String path = fs.getTreePath(tree);
+                return (path != null) ? new File(path) : null;
+            }
+        } catch (Throwable t) {
+            LOG.warn("unable to resolve the picked folder {}", t.toString());
+        }
+
+        return null;
     }
 
     private void connect() {
@@ -466,7 +618,7 @@ public class SettingsActivity extends PreferenceActivity {
             protected void onPreExecute() {
                 LOG.info("listen port {}", ConfigurationManager.instance().getLong(Constants.PREF_KEY_LISTEN_PORT));
                 Engine.instance().setListenPort((int)ConfigurationManager.instance().getLong(Constants.PREF_KEY_LISTEN_PORT));
-                Engine.instance().setMaxPeersCount((int)ConfigurationManager.instance().getLong(Constants.PREF_KEY_TRANSFER_MAX_TOTAL_CONNECTIONS));
+                Engine.instance().setMaxConnections((int)ConfigurationManager.instance().getLong(Constants.PREF_KEY_TRANSFER_MAX_TOTAL_CONNECTIONS));
                 Engine.instance().setNickname(ConfigurationManager.instance().getString(Constants.PREF_KEY_NICKNAME));
                 Engine.instance().setReconnectToServer(ConfigurationManager.instance().getBoolean(Constants.PREF_KEY_RECONNECT_TO_SERVER));
                 Engine.instance().setServerPing(ConfigurationManager.instance().getBoolean(Constants.PREF_KEY_PING_SERVER));

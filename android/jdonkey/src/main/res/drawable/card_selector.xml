@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Row background. Order matters - the first matching item wins - so pressed is checked
+  before hovered, and hovered before focused.
+
+  hovered is what a headset controller produces while you aim at a row without having
+  clicked yet, and it is the state that makes a pointer-driven list feel responsive.
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/card_surface_pressed" android:state_pressed="true"/>
+    <item android:drawable="@drawable/card_surface_hovered" android:state_hovered="true"/>
+    <item android:drawable="@drawable/card_surface_hovered" android:state_focused="true"/>
+    <item android:drawable="@drawable/card_surface_hovered" android:state_selected="true"/>
+    <item android:drawable="@drawable/card_surface"/>
+</selector>

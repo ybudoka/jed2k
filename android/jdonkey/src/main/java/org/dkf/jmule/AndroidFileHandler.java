@@ -66,6 +66,12 @@ public class AndroidFileHandler extends FileHandler {
     }
 
     @Override
+    public void retarget(final File target) {
+        // drops the descriptor of the old document; descriptor() re-opens the new path
+        super.retarget(target);
+    }
+
+    @Override
     protected void deleteFile() throws JED2KException {
         if (!doc.delete()) {
             throw new JED2KException(ErrorCode.UNABLE_TO_DELETE_FILE);

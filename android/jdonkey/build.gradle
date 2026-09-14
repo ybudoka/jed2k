@@ -74,6 +74,9 @@ android {
         minSdkVersion 21
         targetSdkVersion 33
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        // overridden by the debug build type so the two installs are told apart
+        // in the launcher
+        manifestPlaceholders = [appLabel: 'Mule on Android']
     }
 
     compileOptions {
@@ -102,6 +105,25 @@ android {
 
 
     signingConfigs {
+        // Debug builds are normally signed with ~/.android/debug.keystore, which is
+        // generated on the fly the first time a machine builds anything. Every CI runner
+        // is a fresh machine, so consecutive CI builds were each signed with a different
+        // throwaway key - and Android refuses to update an installed app whose signature
+        // does not match, which shows up as "conflicts with an existing package".
+        //
+        // Pinning a keystore that lives in the repo makes every debug build - CI or
+        // local, today or next month - update-compatible with the previous one.
+        //
+        // This is a *debug* key and is meant to be public: standard debug credentials,
+        // no security value, and it signs nothing that ships. Release keeps its own
+        // config below and is untouched.
+        debug {
+            storeFile file('ci/debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+
         release {
             if (isAssembleRelease) {
                 storeFile file("/home/inkpot/dev/jdonkey.keystore")
@@ -134,6 +156,15 @@ android {
         debug {
             minifyEnabled false
             buildConfigField "String", "FLAVOR", "\"basic\""
+            signingConfig signingConfigs.debug
+
+            // Install alongside the official build instead of colliding with it.
+            // A debug APK can never update a Play/F-Droid install anyway - different
+            // signing key - so sharing the applicationId only produced a failed install.
+            // With the suffix both sit on the device at once, each with its own data.
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+            manifestPlaceholders = [appLabel: 'Mule (debug)']
             //proguardFiles getDefaultProguardFile('proguard-android.txt'),
             //        'proguard-rules.pro'
             //multiDexKeepFile file('multidex-config.txt')
@@ -148,11 +179,11 @@ android {
             resValue "string", "application_label", "Mule"
         }
     }
+    // One block, not two: lintOptions is the deprecated pre-AGP-7 alias for lint, and
+    // having both meant the same extension was configured twice, half of it through
+    // the deprecated name.
     lint {
         abortOnError false
-    }
-
-    lintOptions {
         checkReleaseBuilds false
     }
 

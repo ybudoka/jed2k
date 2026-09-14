@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The little rounded chip behind a source label ("server" / "KAD"). A word set in the
+  accent colour next to three other grey words reads as a fourth grey word; a chip
+  reads as a badge.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/app_pill_background" />
+    <corners android:radius="20dp" />
+</shape>

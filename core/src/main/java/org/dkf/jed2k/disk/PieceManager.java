@@ -132,7 +132,18 @@ public class PieceManager extends BlocksEnumerator {
      * @return bit per piece, set when the piece on disk matches its hash
      * @throws JED2KException when the file cannot be read
      */
+    /**
+     * progress of verifyPieces(), one call per piece checked
+     */
+    public interface VerifyProgress {
+        void onPieceChecked(int done, int total);
+    }
+
     public BitField verifyPieces(final List<Hash> hashes, long fileSize) throws JED2KException {
+        return verifyPieces(hashes, fileSize, null);
+    }
+
+    public BitField verifyPieces(final List<Hash> hashes, long fileSize, final VerifyProgress progress) throws JED2KException {
         BitField res = new BitField(hashes.size());
         ByteBuffer buffer = ByteBuffer.allocate(Constants.BLOCK_SIZE_INT);
         FileChannel c = handler.getReadChannel();
@@ -167,6 +178,8 @@ public class PieceManager extends BlocksEnumerator {
                 } else {
                     log.warn("piece {} on disk hashes to {} expected {}", piece, actual, hashes.get(piece));
                 }
+
+                if (progress != null) progress.onPieceChecked(piece + 1, hashes.size());
             }
         } catch(IOException e) {
             log.error("i/o error on verify {}", e.toString());
@@ -224,5 +237,13 @@ public class PieceManager extends BlocksEnumerator {
 
     public final File getFile() {
         return handler.getFile();
+    }
+
+    /**
+     * the file was moved on disk (finished download taken out of its incomplete folder):
+     * follow it, so verify and repair keeps working on the transfer
+     */
+    public void retarget(final File target) {
+        handler.retarget(target);
     }
 }

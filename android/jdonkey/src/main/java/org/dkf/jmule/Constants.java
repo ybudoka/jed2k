@@ -41,7 +41,9 @@ public final class Constants {
      */
     public static final String JED2K_BUILD = BUILD_PREFIX + (BuildConfig.VERSION_CODE % 1000);
 
-    public static final String APP_PACKAGE_NAME = "org.dkf.jmule";
+    // derived, not literal: the debug build appends an applicationIdSuffix so it can be
+    // installed next to the official one
+    public static final String APP_PACKAGE_NAME = BuildConfig.APPLICATION_ID;
 
     public static final String JED2K_VERSION_STRING = BuildConfig.VERSION_NAME;
 
@@ -87,6 +89,20 @@ public final class Constants {
     public static final String THEME_SYSTEM = "system";
     public static final String THEME_LIGHT = "light";
     public static final String THEME_DARK = "dark";
+
+    /**
+     * Whether the log screen captures DEBUG as well as INFO. Persisted so a problem
+     * that only shows up during startup can still be caught: the choice has to survive
+     * the restart that reproduces it.
+     */
+    public static final String PREF_KEY_GUI_VERBOSE_LOG = "jmule.prefs.gui.verbose_log";
+
+    /**
+     * Extra folders the user has added on the folders screen, newline separated - see
+     * {@link org.dkf.jed2k.util.PathList}. Not shared with anyone: this client does not
+     * upload. They are the folders its unfinished downloads can be recovered from.
+     */
+    public static final String PREF_KEY_EXTRA_FOLDERS = "jmule.prefs.extra_folders";
 
     // ed2k common and servers
     public static final String PREF_KEY_USER_AGENT = "jmule.prefs.user_agent";

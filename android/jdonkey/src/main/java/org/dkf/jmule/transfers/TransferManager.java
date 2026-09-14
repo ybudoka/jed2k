@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
@@ -381,6 +382,16 @@ public final class TransferManager {
         @Override
         public List<PeerInfo> getItems() {
             return info;
+        }
+
+        @Override
+        public List<String> getRemoteFileNames() {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public boolean requestMoreSources() {
+            return false;
         }
 
         @Override
