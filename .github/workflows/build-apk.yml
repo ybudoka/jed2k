@@ -18,6 +18,12 @@ on:
   push:
     branches:
       - claude/bugs-visual-improvements-62s462
+      - claude/ecstatic-thompson-q2u86m
+  # the Android module cannot be compiled outside a full SDK, so a pull request is
+  # where its build gets checked
+  pull_request:
+    branches:
+      - master
 
 jobs:
   build:
