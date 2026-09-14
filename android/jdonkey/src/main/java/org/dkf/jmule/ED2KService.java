@@ -47,6 +47,7 @@ import org.dkf.jed2k.alert.TransferPausedAlert;
 import org.dkf.jed2k.alert.TransferRemovedAlert;
 import org.dkf.jed2k.alert.TransferResumeDataAlert;
 import org.dkf.jed2k.alert.TransferResumedAlert;
+import org.dkf.jed2k.alert.TransferVerifiedAlert;
 import org.dkf.jed2k.disk.DesktopFileHandler;
 import org.dkf.jed2k.exception.ErrorCode;
 import org.dkf.jed2k.exception.JED2KException;
@@ -743,6 +744,26 @@ public class ED2KService extends JobIntentService {
                 for (final AlertListener ls : listeners) ls.onTransferResumed((TransferResumedAlert) a);
             } else if (a instanceof TransferPausedAlert) {
                 for (final AlertListener ls : listeners) ls.onTransferPaused((TransferPausedAlert) a);
+            } else if (a instanceof TransferVerifiedAlert) {
+                final TransferVerifiedAlert va = (TransferVerifiedAlert) a;
+                log.info("[ED2K service] transfer verified {}: {} of {} pieces ok, {}", va.hash, va.piecesOk, va.piecesTotal, va.ec.getDescription());
+                // the picker was rebuilt from disk: persist it so a restart keeps the repaired state
+                session.saveResumeData();
+                final String message;
+                if (!va.isOk()) {
+                    message = getResources().getString(R.string.transfer_verify_failed, va.ec.getDescription());
+                } else if (va.isRepairNeeded()) {
+                    message = getResources().getString(R.string.transfer_verify_repairing, va.piecesTotal - va.piecesOk, va.piecesTotal);
+                } else {
+                    message = getResources().getString(R.string.transfer_verify_ok, va.piecesTotal);
+                }
+                notificationHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        createTransferNotification(message, "", va.hash);
+                    }
+                });
+                for (final AlertListener ls : listeners) ls.onTransferVerified(va);
             } else if (a instanceof TransferAddedAlert) {
                 localHashes.put(((TransferAddedAlert) a).hash, 0);
                 log.info("[ED2K service] new transfer added {} save resume data now", ((TransferAddedAlert) a).hash);
@@ -1229,6 +1250,19 @@ public class ED2KService extends JobIntentService {
     public void removeTransfer(final Hash h, final boolean removeFile) {
         if (session != null) {
             session.removeTransfer(h, removeFile);
+        }
+    }
+
+    /**
+     * verify and repair transfer's file: re-hash it from disk, download again what is broken
+     */
+    public void verifyTransfer(final Hash h) {
+        if (session != null) {
+            TransferHandle handle = session.findTransfer(h);
+            if (handle.isValid()) {
+                log.info("[ED2K service] verify transfer {}", h);
+                handle.verify();
+            }
         }
     }
 

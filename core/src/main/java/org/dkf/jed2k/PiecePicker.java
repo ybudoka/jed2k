@@ -254,6 +254,19 @@ public class PiecePicker extends BlocksEnumerator {
         pieceStatus[pieceIndex] = PieceState.HAVE.value;
     }
 
+    /**
+     * set piece state from a verification pass: forget any downloading progress on it
+     * and mark it as "have" when its data on disk matched the hash, "none" otherwise
+     * @param pieceIndex index of piece
+     * @param have true when the piece is complete and verified on disk
+     */
+    public void resetPiece(int pieceIndex, boolean have) {
+        assert(pieceIndex < pieceStatus.length);
+        DownloadingPiece dp = getDownloadingPiece(pieceIndex);
+        if (dp != null) downloadingPieces.remove(dp);
+        pieceStatus[pieceIndex] = have ? PieceState.HAVE.value : PieceState.NONE.value;
+    }
+
     public void restoreHave(int pieceIndex) {
         assert(downloadingPieces.isEmpty());
         pieceStatus[pieceIndex] = PieceState.HAVE.value;

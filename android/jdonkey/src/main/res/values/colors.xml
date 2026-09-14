@@ -122,6 +122,7 @@
     <color name="transfer_state_completed">@color/basic_green_dark</color>
     <color name="transfer_state_stalled">#ffa06400</color>
     <color name="transfer_state_paused">@color/app_text_secondary</color>
+    <color name="transfer_state_verifying">#ff6a1b9a</color>
 
     <!-- Text Colors -->
     <color name="app_text_primary">@color/basic_gray_text_dark</color>

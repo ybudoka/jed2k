@@ -200,6 +200,13 @@
     <string name="transfer_state_paused">Paused</string>
     <string name="transfer_state_completed">Completed</string>
     <string name="transfer_state_stalled">Waiting sources</string>
+    <string name="transfer_state_verifying">Verifying</string>
+    <string name="verify_transfer_menu_action">Verify and repair</string>
+    <string name="transfer_verify_started">Checking the file on disk, damaged pieces will be downloaded again</string>
+    <string name="transfer_verify_already_running">Verification is already running</string>
+    <string name="transfer_verify_ok">File verified: all %1$d pieces are good</string>
+    <string name="transfer_verify_repairing">Repairing: %1$d of %2$d pieces were damaged and will be downloaded again</string>
+    <string name="transfer_verify_failed">Verification failed: %1$s</string>
     <string name="transfer_state_downloading">Downloading</string>
 
     <string name="server_add_name">Name</string>

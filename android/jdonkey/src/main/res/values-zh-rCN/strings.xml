@@ -171,6 +171,13 @@
     <string name="transfer_state_paused">暂停</string>
     <string name="transfer_state_completed">完全的</string>
     <string name="transfer_state_stalled">等待来源</string>
+    <string name="transfer_state_verifying">校验中</string>
+    <string name="verify_transfer_menu_action">校验并修复</string>
+    <string name="transfer_verify_started">正在校验磁盘上的文件，损坏的分块将重新下载</string>
+    <string name="transfer_verify_already_running">校验已在进行中</string>
+    <string name="transfer_verify_ok">文件校验完成：全部 %1$d 个分块均完好</string>
+    <string name="transfer_verify_repairing">正在修复：%2$d 个分块中有 %1$d 个已损坏，将重新下载</string>
+    <string name="transfer_verify_failed">校验失败：%1$s</string>
     <string name="transfer_state_downloading">下载</string>
 
     <string name="server_add_name">姓名</string>

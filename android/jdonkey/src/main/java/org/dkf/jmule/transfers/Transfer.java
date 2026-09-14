@@ -36,6 +36,7 @@ public interface Transfer {
         COMPLETED,
         STALLED,
         DOWNLOADING,
+        VERIFYING,
         NONE
     }
 
@@ -91,4 +92,11 @@ public interface Transfer {
     public String toLink();
 
     public State getState();
+
+    /**
+     * re-hash the file on disk and download again every piece that does not match
+     */
+    void verify();
+
+    boolean isVerifying();
 }

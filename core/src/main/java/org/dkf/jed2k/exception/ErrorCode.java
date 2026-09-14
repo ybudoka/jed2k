@@ -81,6 +81,8 @@ public enum ErrorCode implements BaseErrorCode {
     GITHUB_CFG_PORTS_ARE_EMPTY(96, "Ports are empty in github kad config"),
     INVALID_PR_PARAMETER(97, "Peer request parameters are invalid"),
     PEER_REQUEST_OVERFLOW(98, "Peer request has length greater than PIECE_SIZE"),
+    TRANSFER_VERIFYING(101, "Transfer is being verified"),
+    NO_HASHSET(102, "Transfer has no hash set to verify against"),
 
     FAIL(100, "Fail");
 

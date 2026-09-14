@@ -189,6 +189,13 @@
     <string name="transfer_state_paused">In pausa</string>
     <string name="transfer_state_completed">Completato</string>
     <string name="transfer_state_stalled">In attesa di fonti</string>
+    <string name="transfer_state_verifying">Verifica in corso</string>
+    <string name="verify_transfer_menu_action">Verifica e ripara</string>
+    <string name="transfer_verify_started">Controllo del file su disco, le parti danneggiate verranno scaricate di nuovo</string>
+    <string name="transfer_verify_already_running">La verifica è già in corso</string>
+    <string name="transfer_verify_ok">File verificato: tutte le %1$d parti sono integre</string>
+    <string name="transfer_verify_repairing">Riparazione: %1$d parti su %2$d erano danneggiate e verranno scaricate di nuovo</string>
+    <string name="transfer_verify_failed">Verifica fallita: %1$s</string>
     <string name="transfer_state_downloading">In trasferimento</string>
 
     <string name="server_add_name">Nome</string>

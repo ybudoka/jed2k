@@ -13,9 +13,14 @@ public class TransferStatus {
     public enum TransferState {
         LOADING_RESUME_DATA,
         DOWNLOADING,
-        FINISHED
+        FINISHED,
+        /**
+         * file is being re-hashed from disk (verify and repair), peers are disconnected
+         */
+        VERIFYING
     };
 
+    public TransferState state = TransferState.LOADING_RESUME_DATA;
     public boolean paused;
     public float progress   = 0f;
     public int progressPPM          = 0;

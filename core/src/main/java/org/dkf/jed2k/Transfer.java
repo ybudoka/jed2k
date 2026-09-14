@@ -4,6 +4,7 @@ import org.dkf.jed2k.alert.*;
 import org.dkf.jed2k.data.PieceBlock;
 import org.dkf.jed2k.disk.AsyncRelease;
 import org.dkf.jed2k.disk.AsyncRestore;
+import org.dkf.jed2k.disk.AsyncVerify;
 import org.dkf.jed2k.disk.PieceManager;
 import org.dkf.jed2k.exception.BaseErrorCode;
 import org.dkf.jed2k.exception.ErrorCode;
@@ -59,6 +60,11 @@ public class Transfer {
 
     private boolean pause = false;
     private boolean abort = false;
+    /**
+     * verify and repair pass in progress: peers are kept away until the disk thread
+     * reports which pieces are actually good
+     */
+    private boolean verifying = false;
     private HashSet<PeerConnection> connections = new HashSet<PeerConnection>();
 
     /**
@@ -242,8 +248,12 @@ public class Transfer {
         return abort;
     }
 
+    final boolean isVerifying() {
+        return verifying;
+    }
+
     final boolean wantMorePeers() {
-        return !isPaused() && !isFinished() && policy.numConnectCandidates() > 0;
+        return !isPaused() && !isVerifying() && !isFinished() && policy.numConnectCandidates() > 0;
     }
 
     void addStats(Statistics s) {
@@ -276,6 +286,7 @@ public class Transfer {
         assert c != null;
         if (isPaused()) throw new JED2KException(ErrorCode.TRANSFER_PAUSED);
         if (isAborted()) throw new JED2KException(ErrorCode.TRANSFER_ABORTED);
+        if (isVerifying()) throw new JED2KException(ErrorCode.TRANSFER_VERIFYING);
         if (isFinished()) throw new JED2KException(ErrorCode.TRANSFER_FINISHED);
         policy.newConnection(c);
         connections.add(c);
@@ -305,7 +316,7 @@ public class Transfer {
 
 	void secondTick(final Statistics accumulator, long tickIntervalMS) {
 
-        if (!isPaused() && !isAborted() && !isFinished() && connections.isEmpty()) {
+        if (!isPaused() && !isAborted() && !isVerifying() && !isFinished() && connections.isEmpty()) {
 
             if (nextTimeForSourcesRequest < Time.currentTime()) {
                 log.debug("[transfer] request peers on server {}", hash);
@@ -378,6 +389,85 @@ public class Transfer {
         pause = false;
         needSaveResumeData = true;
         session.pushAlert(new TransferResumedAlert(hash));
+    }
+
+    /**
+     * verify and repair: re-hash the whole file from disk and put every piece that does
+     * not match back into the download queue
+     * <p>
+     * Works on finished and unfinished transfers alike. Peers are disconnected first so
+     * nothing is written while the disk thread reads; the check itself is queued behind
+     * every write already submitted for this transfer, so it sees the final state of the
+     * file. Result arrives in onVerifyCompleted().
+     */
+    void verify() {
+        if (isAborted() || isVerifying()) return;
+
+        if (hashSet.isEmpty() && numPieces == 1) {
+            // one piece: its hash is the file hash itself
+            hashSet.add(hash);
+        }
+
+        if (!isValidHashSet(hashSet)) {
+            log.warn("{} can not be verified: no valid hash set yet", hash);
+            session.pushAlert(new TransferVerifiedAlert(hash, 0, numPieces, ErrorCode.NO_HASHSET));
+            return;
+        }
+
+        verifying = true;
+        disconnectAll(ErrorCode.TRANSFER_VERIFYING);
+        setState(TransferStatus.TransferState.VERIFYING);
+        log.info("{} verification started, {} pieces", hash, numPieces);
+        session.submitDiskTask(new AsyncVerify(this, new ArrayList<Hash>(hashSet), size));
+    }
+
+    /**
+     * apply the verification result: the picker is rebuilt from what is really on disk
+     * @param goodPieces bit per piece, set when the piece matched its hash
+     * @param buffers buffers freed by the disk thread, returned to the pool
+     * @param ec NO_ERROR, or why the file could not be checked (state is left untouched)
+     */
+    public void onVerifyCompleted(final BitField goodPieces, final List<ByteBuffer> buffers, final BaseErrorCode ec) {
+        if (buffers != null) {
+            for (ByteBuffer buffer : buffers) {
+                session.getBufferPool().deallocate(buffer, Time.currentTime());
+            }
+        }
+
+        verifying = false;
+        boolean wasFinished = isFinished();
+
+        if (ec != ErrorCode.NO_ERROR) {
+            log.error("{} verification failed: {}", hash, ec.getDescription());
+            setState(wasFinished ? TransferStatus.TransferState.FINISHED : TransferStatus.TransferState.DOWNLOADING);
+            session.pushAlert(new TransferVerifiedAlert(hash, 0, numPieces, ec));
+            return;
+        }
+
+        int ok = 0;
+        for (int i = 0; i < numPieces; ++i) {
+            boolean good = goodPieces.getBit(i);
+            if (good) ++ok;
+            picker.resetPiece(i, good);
+        }
+
+        needSaveResumeData = true;
+        log.info("{} verification completed: {} of {} pieces are good", hash, ok, numPieces);
+
+        if (isFinished()) {
+            if (!wasFinished) {
+                finished();
+            } else {
+                setState(TransferStatus.TransferState.FINISHED);
+            }
+        } else {
+            // damaged or missing pieces go back to the network: ask for sources right away
+            setState(TransferStatus.TransferState.DOWNLOADING);
+            nextTimeForSourcesRequest = 0;
+            nextTimeForDhtSourcesRequest = 0;
+        }
+
+        session.pushAlert(new TransferVerifiedAlert(hash, ok, numPieces, ErrorCode.NO_ERROR));
     }
 
     /**
@@ -597,6 +687,7 @@ public class Transfer {
         TransferStatus status = new TransferStatus();
         getBytesDone(status);
 
+        status.state = state;
         status.paused = isPaused();
         status.downloadPayload = stat.totalPayloadDownload();
         status.downloadProtocol = stat.totalProtocolDownload();

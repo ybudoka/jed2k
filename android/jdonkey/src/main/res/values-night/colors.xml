@@ -80,5 +80,6 @@
     <color name="basic_green_dark">#ff20c997</color>
     <color name="basic_yellow">#ff5a4a1f</color>
     <color name="transfer_state_stalled">#ffffb454</color>
+    <color name="transfer_state_verifying">#ffce93d8</color>
 
 </resources>

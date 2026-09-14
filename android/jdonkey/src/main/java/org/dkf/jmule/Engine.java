@@ -52,6 +52,7 @@ import org.dkf.jed2k.alert.TransferDiskIOErrorAlert;
 import org.dkf.jed2k.alert.TransferPausedAlert;
 import org.dkf.jed2k.alert.TransferRemovedAlert;
 import org.dkf.jed2k.alert.TransferResumedAlert;
+import org.dkf.jed2k.alert.TransferVerifiedAlert;
 import org.dkf.jed2k.exception.JED2KException;
 import org.dkf.jed2k.protocol.Hash;
 import org.dkf.jed2k.protocol.kad.KadId;
@@ -186,6 +187,11 @@ public final class Engine implements AlertListener {
 
     @Override
     public void onTransferIOError(TransferDiskIOErrorAlert alert) {
+
+    }
+
+    @Override
+    public void onTransferVerified(TransferVerifiedAlert alert) {
 
     }
 
@@ -524,6 +530,10 @@ public final class Engine implements AlertListener {
 
     public void removeTransfer(Hash h, boolean removeFile) {
         if (service != null) service.removeTransfer(h, removeFile);
+    }
+
+    public void verifyTransfer(Hash h) {
+        if (service != null) service.verifyTransfer(h);
     }
 
     public ExecutorService getThreadPool() {

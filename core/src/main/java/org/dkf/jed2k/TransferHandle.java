@@ -118,6 +118,31 @@ public class TransferHandle implements Comparable<TransferHandle> {
         return res;
     }
 
+    /**
+     * verify and repair: re-hash the file on disk and download again whatever does not
+     * match; see Transfer.verify()
+     */
+    public final void verify() {
+        Transfer t = transfer.get();
+        if (t != null) {
+            synchronized (ses) {
+                t.verify();
+            }
+        }
+    }
+
+    public final boolean isVerifying() {
+        boolean res = false;
+        Transfer t = transfer.get();
+        if (t != null) {
+            synchronized (ses) {
+                res = t.isVerifying();
+            }
+        }
+
+        return res;
+    }
+
     public final boolean isFinished() {
         boolean res = false;
         Transfer t = transfer.get();

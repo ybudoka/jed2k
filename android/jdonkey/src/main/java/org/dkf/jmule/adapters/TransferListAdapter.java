@@ -268,6 +268,12 @@ public class TransferListAdapter extends BaseExpandableListAdapter {
                 R.string.transfers_context_menu_copy_link,
                 R.string.transfers_context_menu_copy_link_copied, download.toLink()));
 
+        // verify and repair makes sense for every transfer that has a file, unless a pass
+        // is already running; stopped engine can not read anything
+        if (!download.isVerifying() && !Engine.instance().isStopped()) {
+            items.add(new VerifyTransferMenuAction(context.get(), download));
+        }
+
         items.add(new CancelMenuAction(context.get(), download, !download.isComplete()));
         items.add(new ShowThePathMenuAction(context.get(), download));
         return title;
@@ -374,6 +380,10 @@ public class TransferListAdapter extends BaseExpandableListAdapter {
                 case STALLED:
                     status.setText(R.string.transfer_state_stalled);
                     statusColor = R.color.transfer_state_stalled;
+                    break;
+                case VERIFYING:
+                    status.setText(R.string.transfer_state_verifying);
+                    statusColor = R.color.transfer_state_verifying;
                     break;
                 default:
                     status.setText("");
