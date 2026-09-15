@@ -36,6 +36,7 @@ public interface Transfer {
         COMPLETED,
         STALLED,
         DOWNLOADING,
+        VERIFYING,
         NONE
     }
 
@@ -82,6 +83,21 @@ public interface Transfer {
 
     public List<PeerInfo> getItems();
 
+    /**
+     * @return distinct names the sources advertise for this file; ed2k has no
+     * authoritative name, each source reports its own
+     */
+    public List<String> getRemoteFileNames();
+
+    /**
+     * Re-asks the server and KAD for sources right away instead of waiting for the
+     * automatic back-off.
+     *
+     * @return false when nothing was asked - the transfer is not running, it is at the
+     * connection limit, or it was asked too recently
+     */
+    public boolean requestMoreSources();
+
     public boolean isPaused();
 
     public void pause();
@@ -91,4 +107,16 @@ public interface Transfer {
     public String toLink();
 
     public State getState();
+
+    /**
+     * re-hash the file on disk and download again every piece that does not match
+     */
+    void verify();
+
+    boolean isVerifying();
+
+    /**
+     * [0..100] while verifying
+     */
+    int getVerifyProgress();
 }

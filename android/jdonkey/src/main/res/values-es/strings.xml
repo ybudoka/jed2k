@@ -146,6 +146,13 @@
     <string name="transfer_state_downloading">Descargar</string>
     <string name="transfer_state_paused">Pausa</string>
     <string name="transfer_state_stalled">A la espera de fuentes</string>
+    <string name="transfer_state_verifying">Verificando</string>
+    <string name="transfers_context_menu_verify">Verificar y reparar</string>
+    <string name="transfer_verify_started">Comprobando el archivo en disco, las partes dañadas se descargarán de nuevo</string>
+    <string name="transfer_verify_already_running">La verificación ya está en curso</string>
+    <string name="transfer_verify_ok">Archivo verificado: las %1$d partes están bien</string>
+    <string name="transfer_verify_repairing">Reparando: %1$d de %2$d partes estaban dañadas y se descargarán de nuevo</string>
+    <string name="transfer_verify_failed">Error de verificación: %1$s</string>
     <string name="transfers_context_menu_copy_link">Copiar link</string>
     <string name="transfers_context_menu_copy_link_copied">Enlace copiado al portapapeles</string>
     <string name="transfers_max_downloads">Max Descargas</string>

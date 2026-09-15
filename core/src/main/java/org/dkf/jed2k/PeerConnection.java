@@ -162,6 +162,11 @@ public class PeerConnection extends Connection {
     private boolean transferringData = false;
 
     /**
+     * Name this peer advertises for the transfer's hash, from OP_REQFILENAMEANSWER.
+     */
+    private String remoteFileName = null;
+
+    /**
      * current peer request from remote peer
      * next will be payload data
      */
@@ -618,6 +623,18 @@ public class PeerConnection extends Connection {
                 , value);
 
         if (transfer != null && value.hash.equals(transfer.getHash())) {
+            // The name the peer knows this hash by. It was parsed and dropped on the
+            // floor before; sources routinely advertise the same file under different
+            // names, and seeing them is how you tell a mislabelled or fake one apart.
+            try {
+                remoteFileName = value.name.asString();
+                if (remoteFileName != null && !remoteFileName.isEmpty()) {
+                    transfer.addRemoteFileName(remoteFileName);
+                }
+            } catch (JED2KException e) {
+                log.debug("{} unable to decode remote file name {}", endpoint, e.getMessage());
+            }
+
             log.debug("file status request >> {}", endpoint);
             write(new FileStatusRequest(transfer.getHash()));
         } else {
@@ -870,6 +887,7 @@ public class PeerConnection extends Connection {
         if (transfer.getPicker().isBlockDownloaded(blockFinished)) {
             log.warn("{} request {} references to downloaded block {}, remove pending block and skip data", getEndpoint(), recvReq, blockFinished);
             downloadQueue.remove(pb);
+            releaseBuffer(pb);
             skipData();
             return;
         }
@@ -921,6 +939,7 @@ public class PeerConnection extends Connection {
                         log.warn("{} block {} wasn't downloading, do not write"
                             , getEndpoint()
                             , pb.block);
+                        releaseBuffer(pb);
                     }
 
                     // write block to disk here
@@ -1049,10 +1068,22 @@ public class PeerConnection extends Connection {
      * request new blocks from associated transfer's picker
      */
     void requestBlocks() {
-        if (transfer == null || !transfer.hasPicker() || transferringData || !downloadQueue.isEmpty()) return;
+        if (transfer == null || !transfer.hasPicker() || transferringData) return;
+
+        // Top the queue up as soon as there is room in it.
+        //
+        // This used to bail out unless the queue was completely empty, which turned the
+        // download into stop-and-wait: ask for three blocks, then sit idle for a full
+        // round trip while the last one arrived before asking for anything else. On a
+        // high latency link - mobile especially - that idle gap is most of the transfer
+        // time. Refilling on every completed block keeps REQUEST_QUEUE_SIZE blocks in
+        // flight continuously, which is what the constant was meant to express.
+        final int room = Constants.REQUEST_QUEUE_SIZE - downloadQueue.size();
+        if (room <= 0) return;
+
         LinkedList<PieceBlock> blocks = new LinkedList<PieceBlock>();
         PiecePicker picker = transfer.getPicker();
-        picker.pickPieces(blocks, Constants.REQUEST_QUEUE_SIZE, getPeer(), speed());
+        picker.pickPieces(blocks, room, getPeer(), speed());
         RequestParts64 reqp = new RequestParts64(transfer.getHash());
 
         while(!blocks.isEmpty() && downloadQueue.size() < Constants.REQUEST_QUEUE_SIZE) {
@@ -1067,7 +1098,11 @@ public class PeerConnection extends Connection {
         if (!reqp.isEmpty()) {
             write(reqp);
         }
-        else {
+        else if (downloadQueue.isEmpty()) {
+            // The picker had nothing for us and nothing is still in flight, so this peer
+            // is of no further use. Note the downloadQueue check: now that we refill a
+            // partially full queue, "no new blocks" on its own is an ordinary end-game
+            // condition and must not tear down a connection that is still delivering.
             close(ErrorCode.NO_ERROR);
         }
     }
@@ -1078,15 +1113,28 @@ public class PeerConnection extends Connection {
             while(!downloadQueue.isEmpty()) {
                 PendingBlock pb = downloadQueue.poll();
                 picker.abortDownload(pb.block, getPeer());
-                if (pb.buffer != null) {
-                    pb.buffer.clear();
-                    session.getBufferPool().deallocate(pb.buffer, Time.currentTime());
-                }
+                releaseBuffer(pb);
             }
         }
         else {
-            downloadQueue.clear();
+            while(!downloadQueue.isEmpty()) {
+                releaseBuffer(downloadQueue.poll());
+            }
         }
+    }
+
+    /**
+     * return the pending block's buffer to the session pool
+     * every pending block that leaves the download queue without going through
+     * asyncWrite() must pass here: a buffer dropped anywhere else is lost for the rest
+     * of the session and the pool ends up refusing allocations with NO_MEMORY
+     * @param pb pending block being discarded
+     */
+    private void releaseBuffer(final PendingBlock pb) {
+        if (pb == null || pb.buffer == null) return;
+        pb.buffer.clear();
+        session.getBufferPool().deallocate(pb.buffer, Time.currentTime());
+        pb.buffer = null;
     }
 
     BitField getRemotePieces() {
@@ -1134,6 +1182,7 @@ public class PeerConnection extends Connection {
         i.setEndpoint(getEndpoint());
         i.setStrModVersion(remotePeerInfo.modVersion);
         i.setSourceFlag((getPeer()!=null)?getPeer().getSourceFlag():0);
+        i.setFileName(remoteFileName);
         return i;
     }
 

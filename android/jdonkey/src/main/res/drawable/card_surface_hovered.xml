@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A row the pointer is resting on. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/app_card_hovered" />
+    <stroke
+        android:width="1dp"
+        android:color="@color/basic_blue_highlight" />
+    <corners android:radius="@dimen/card_radius" />
+</shape>

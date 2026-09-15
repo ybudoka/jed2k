@@ -56,7 +56,7 @@
 
     <!-- styles for elements -->
     <style name="Preference_TextAppearanceMaterialBody2">
-        <item name="android:textSize">14sp</item>
+        <item name="android:textSize">@dimen/text_small</item>
         <item name="android:fontFamily">sans-serif</item>
         <item name="android:textColor">?android:attr/textColorPrimary</item>
         <item name="android:textStyle">normal</item>
@@ -68,7 +68,7 @@
         <item name="android:background">@drawable/searchinput_button_selector</item>
         <item name="android:drawableTop">@drawable/radio_button_background_selector</item>
         <item name="android:textColor">@drawable/radio_button_textcolor_selector</item>
-        <item name="android:textSize">10sp</item>
+        <item name="android:textSize">@dimen/text_micro_dense</item>
         <item name="android:gravity">center_horizontal</item>
         <item name="android:paddingTop">10dp</item>
         <item name="android:paddingBottom">10dp</item>
@@ -80,7 +80,7 @@
 		<item name="android:background">@drawable/searchinput_button_selector</item>
         <item name="android:drawableLeft">@drawable/radio_button_background_selector</item>
 		<item name="android:textColor">@drawable/radio_button_textcolor_selector</item>
-		<item name="android:textSize">14sp</item>
+		<item name="android:textSize">@dimen/text_small</item>
 		<item name="android:gravity">center</item>
         <item name="android:layout_gravity">center</item>
     </style>
@@ -90,7 +90,7 @@
 		<item name="android:button">@null</item>
 		<item name="android:background">@drawable/radio_button_background_selector</item>
 		<item name="android:textColor">@drawable/radio_button_textcolor_selector</item>
-		<item name="android:textSize">10sp</item>
+		<item name="android:textSize">@dimen/text_micro_dense</item>
 		<item name="android:gravity">center_horizontal</item>
         <item name="android:layout_gravity">center</item>
 	</style>
@@ -174,7 +174,7 @@
     <!-- Main Fragment Simple Header begin -->
 
     <style name="MainFragmentSimpleHeader" parent="@android:style/TextAppearance.Large">
-        <item name="android:textSize">18sp</item>
+        <item name="android:textSize">@dimen/text_large</item>
         <item name="android:gravity">center</item>
         <item name="android:textColor">@android:color/white</item>
     </style>
@@ -293,7 +293,7 @@
 
     <style name="ListItemExtra">
         <item name="android:singleLine">true</item>
-        <item name="android:textSize">13sp</item>
+        <item name="android:textSize">@dimen/text_x_small_dense</item>
         <item name="android:textColor">@color/app_text_secondary_dark</item>
     </style>
 
@@ -318,13 +318,13 @@
     <style name="NoSearchResultsLink">
         <item name="android:singleLine">true</item>
         <!-- was 18dp: text sizes must be sp so they honour the user's font scale -->
-        <item name="android:textSize">18sp</item>
+        <item name="android:textSize">@dimen/text_large</item>
         <item name="android:textColor">@color/app_highlight_text</item>
     </style>
 
     <style name="SearchResultListItemSource">
         <item name="android:singleLine">true</item>
-        <item name="android:textSize">14sp</item>
+        <item name="android:textSize">@dimen/text_small</item>
         <!-- was basic_blue, the navy used for the toolbar. That is chrome colour, not
              body colour: under the dark theme it renders navy-on-near-black. The
              accent is the right token for a source label and reads in both themes. -->
@@ -338,7 +338,7 @@
         <item name="android:paddingBottom">0dp</item>
         <item name="android:paddingLeft">17dp</item>
         <item name="android:paddingRight">17dp</item>
-        <item name="android:textSize">16sp</item>
+        <item name="android:textSize">@dimen/text_medium</item>
     </style>
 
     <style name="BrowsePeerActivityHeaderTitle" parent="@android:style/TextAppearance.Small">

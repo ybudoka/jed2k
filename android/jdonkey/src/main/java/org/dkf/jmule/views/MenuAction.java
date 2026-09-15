@@ -19,7 +19,12 @@ package org.dkf.jmule.views;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;
+
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
+
 import org.dkf.jed2k.util.Ref;
+import org.dkf.jmule.R;
 
 import java.lang.ref.WeakReference;
 
@@ -36,8 +41,33 @@ public abstract class MenuAction {
 
     public MenuAction(Context context, Drawable image, String text) {
         this.contextRef = new WeakReference<Context>(context);
-        this.image = image;
+        this.image = tint(context, image);
         this.text = text;
+    }
+
+    /**
+     * Menu icons are monochrome silhouettes painted black, drawn by MenuAdapter as a
+     * compound drawable on a dialog row. Under the dark theme that row is dark, so the
+     * icons were invisible. Tinting from the text colour makes them follow the theme.
+     * <p>
+     * The drawable has to be mutated first: getDrawable() hands out instances that
+     * share one ConstantState, so tinting without it would recolour the same icon
+     * everywhere else it is used, including on the navy chrome where it must stay
+     * white.
+     */
+    private static Drawable tint(Context context, Drawable image) {
+        if (context == null || image == null) {
+            return image;
+        }
+
+        try {
+            Drawable copy = DrawableCompat.wrap(image.mutate());
+            DrawableCompat.setTint(copy, ContextCompat.getColor(context, R.color.icon_tint));
+            return copy;
+        } catch (Throwable t) {
+            // an untinted icon is worse than a tinted one, not worse than no menu
+            return image;
+        }
     }
 
     public MenuAction(Context context, int imageId, String text) {

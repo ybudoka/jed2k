@@ -18,13 +18,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 -->
+<!--
+  Generic wrapper AbstractListAdapter puts around every row, carrying the hidden
+  selection checkbox.
+
+  It used to paint listview_item_background: an opaque body-coloured slab with a
+  hairline separator. Rows are cards on a page now, and that slab sat *behind* each
+  card - filling the gutter with the card colour and drawing a separator between two
+  things that are already visibly separate. The row's own background is the card, so
+  this one has none.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/listview_item_background_selector"
-    android:orientation="horizontal"
-    android:paddingBottom="1dp"
-    android:paddingTop="1dp">
+    android:orientation="horizontal">
 
     <!-- Hidden by default: initCheckBox() only ever shows it when the adapter has
          checkboxesVisibility set, and starting out "visible" made the row jump on

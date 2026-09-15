@@ -12,6 +12,13 @@ import static org.dkf.jed2k.Utils.sizeof;
 public class CallbackRequest implements Serializable {
     public int clientId = 0;
 
+    /**
+     * Required by the packet combiner, which instantiates registered packets
+     * reflectively - see {@link org.dkf.jed2k.protocol.client.FileRequest#FileRequest()}.
+     */
+    public CallbackRequest() {
+    }
+
     public CallbackRequest(int c) {
         clientId = c;
     }

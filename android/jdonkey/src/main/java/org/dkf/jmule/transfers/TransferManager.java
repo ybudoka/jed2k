@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
@@ -384,6 +385,16 @@ public final class TransferManager {
         }
 
         @Override
+        public List<String> getRemoteFileNames() {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public boolean requestMoreSources() {
+            return false;
+        }
+
+        @Override
         public boolean isPaused() {
             return paused;
         }
@@ -406,6 +417,21 @@ public final class TransferManager {
         @Override
         public State getState() {
             return State.NONE;
+        }
+
+        @Override
+        public void verify() {
+
+        }
+
+        @Override
+        public boolean isVerifying() {
+            return false;
+        }
+
+        @Override
+        public int getVerifyProgress() {
+            return 0;
         }
 
         void shuffle() {

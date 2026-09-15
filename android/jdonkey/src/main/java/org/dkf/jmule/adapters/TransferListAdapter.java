@@ -264,9 +264,29 @@ public class TransferListAdapter extends BaseExpandableListAdapter {
         }
 
         items.add(new CopyToClipboardMenuAction(context.get(),
+                R.drawable.ic_content_copy_black_24dp,
+                R.string.transfers_context_menu_copy_name,
+                R.string.transfers_context_menu_copy_name_copied, download.getDisplayName()));
+
+        items.add(new CopyToClipboardMenuAction(context.get(),
                 R.drawable.ic_insert_link_black_24dp,
                 R.string.transfers_context_menu_copy_link,
                 R.string.transfers_context_menu_copy_link_copied, download.toLink()));
+
+        // names the sources report for this hash - see ShowRemoteFileNamesMenuAction
+        items.add(new ShowRemoteFileNamesMenuAction(context.get(), download));
+
+        // only useful while there is still something to download
+        if (!download.isComplete()) {
+            items.add(new FindMoreSourcesMenuAction(context.get(), download));
+        }
+
+        // verify and repair re-hashes the file on disk and downloads again what does not
+        // match; useful on finished and unfinished transfers alike, unless a pass is
+        // already running or the engine is stopped and cannot read anything
+        if (!download.isVerifying() && !Engine.instance().isStopped()) {
+            items.add(new VerifyTransferMenuAction(context.get(), download));
+        }
 
         items.add(new CancelMenuAction(context.get(), download, !download.isComplete()));
         items.add(new ShowThePathMenuAction(context.get(), download));
@@ -374,6 +394,10 @@ public class TransferListAdapter extends BaseExpandableListAdapter {
                 case STALLED:
                     status.setText(R.string.transfer_state_stalled);
                     statusColor = R.color.transfer_state_stalled;
+                    break;
+                case VERIFYING:
+                    status.setText(ctx.getString(R.string.transfer_state_verifying) + " " + download.getVerifyProgress() + "%");
+                    statusColor = R.color.transfer_state_verifying;
                     break;
                 default:
                     status.setText("");

@@ -102,7 +102,7 @@
     <RelativeLayout android:layout_width="match_parent"
                     android:layout_height="0dp"
                     android:layout_weight="1"
-                    android:background="@color/body_background_gray_light">
+                    android:background="@color/app_page_background">
         <org.dkf.jmule.views.SwipeLayout
                 android:id="@+id/fragment_transfers_swipe"
                 android:layout_width="match_parent"
@@ -112,7 +112,12 @@
                     android:id="@+id/fragment_transfers_list"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:background="@color/body_background_gray_light"
+                    android:background="@color/app_page_background"
+                    android:childDivider="@null"
+                    android:clipToPadding="false"
+                    android:divider="@null"
+                    android:dividerHeight="0dp"
+                    android:paddingBottom="@dimen/card_gap"
                     android:fadingEdge="none"
                     android:groupIndicator="@android:color/transparent"/>
         </org.dkf.jmule.views.SwipeLayout>

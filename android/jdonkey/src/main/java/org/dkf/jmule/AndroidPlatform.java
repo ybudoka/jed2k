@@ -146,7 +146,10 @@ public final class AndroidPlatform {
             return false;
         }
 
-        if (f.getPath().contains("/Android/data/org.dkf.jmule/")) {
+        // BuildConfig.APPLICATION_ID rather than a literal "org.dkf.jmule": the debug
+        // build carries an applicationIdSuffix so it can sit alongside the official
+        // install, and a hardcoded name would stop matching its own private directory.
+        if (f.getPath().contains("/Android/data/" + BuildConfig.APPLICATION_ID + "/")) {
             // private file, FUSE give us standard POSIX operations
             return false;
         }

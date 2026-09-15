@@ -8,21 +8,26 @@
   populateView() assigned one. The stats lines are now secondary text and the icon
   starts out in the disconnected state.
 
-  The background was body_background_gray, an opaque fill that painted over the row
-  separator drawn by listview_item_background and left the list looking like one slab.
+  It is now a card on a page rather than a full-bleed slab: the outer FrameLayout is
+  there only to space the cards, since a ListView drops layout_margin on a row root.
 -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@color/body_background_white"
+    android:paddingLeft="@dimen/card_gutter"
+    android:paddingRight="@dimen/card_gutter"
+    android:paddingTop="@dimen/card_gap">
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/card_selector"
     android:baselineAligned="false"
+    android:addStatesFromChildren="true"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingBottom="12dp"
-    android:paddingLeft="16dp"
-    android:paddingRight="16dp"
-    android:paddingTop="12dp">
+    android:padding="@dimen/card_padding">
 
     <ImageView
         android:id="@+id/view_preference_servers_list_item_icon"
@@ -35,6 +40,7 @@
         android:alpha="0.4"
         android:contentDescription="@null"
         android:scaleType="fitCenter"
+        android:tint="@color/icon_tint"
         android:src="@drawable/ic_flash_off_black_24dp" />
 
     <LinearLayout
@@ -79,4 +85,6 @@
             tools:visibility="visible" />
     </LinearLayout>
 
-</LinearLayout>
+  </LinearLayout>
+
+</FrameLayout>

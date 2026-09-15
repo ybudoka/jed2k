@@ -101,6 +101,10 @@
     <string name="transfers_select_completed">completed</string>
     <string name="transfers_context_menu_clear_finished">Clear all finished transfers</string>
     <string name="transfers_context_menu_copy_link_copied">Link copied to clipboard</string>
+    <string name="transfers_context_menu_copy_name">Copy file name</string>
+    <string name="transfers_context_menu_copy_name_copied">File name copied to clipboard</string>
+    <string name="remote_file_names">Names reported by sources</string>
+    <string name="remote_file_names_empty">No source has reported a file name yet</string>
     <string name="transfers_context_menu_copy_link">Copy link</string>
     <string name="transfers_context_menu_pause_stop_all_transfers">Pause/Stop all transfers</string>
     <string name="transfers_context_resume_all_torrent_transfers">Resume all torrent transfers</string>
@@ -200,6 +204,12 @@
     <string name="transfer_state_paused">Paused</string>
     <string name="transfer_state_completed">Completed</string>
     <string name="transfer_state_stalled">Waiting sources</string>
+    <string name="transfer_state_verifying">Verifying</string>
+    <string name="transfer_verify_started">Checking the file on disk, damaged pieces will be downloaded again</string>
+    <string name="transfer_verify_already_running">Verification is already running</string>
+    <string name="transfer_verify_ok">File verified: all %1$d pieces are good</string>
+    <string name="transfer_verify_repairing">Repairing: %1$d of %2$d pieces were damaged and will be downloaded again</string>
+    <string name="transfer_verify_failed">Verification failed: %1$s</string>
     <string name="transfer_state_downloading">Downloading</string>
 
     <string name="server_add_name">Name</string>
@@ -279,4 +289,52 @@
     <string name="dummy_uploads_indicator" translatable="false">0 @ 0 KB/s</string>
     <string name="build">build</string>
     <string name="comma">,</string>
+
+    <!-- log screen -->
+    <string name="logs">Logs</string>
+    <string name="logs_summary">See what the app is doing, and share it in a bug report</string>
+    <string name="logs_verbose">Verbose</string>
+    <string name="logs_refresh">Refresh</string>
+    <string name="logs_copy">Copy</string>
+    <string name="logs_share">Share</string>
+    <string name="logs_clear">Clear</string>
+    <string name="logs_empty">Nothing logged yet.</string>
+    <string name="logs_copied">Log copied to clipboard</string>
+    <string name="logs_share_failed">Unable to share the log</string>
+    <string name="logs_line_count">%1$d / %2$d lines</string>
+
+    <string name="transfers_context_menu_find_sources">Find more sources</string>
+    <string name="transfers_context_menu_find_sources_started">Asking the server and KAD for more sources</string>
+    <string name="transfers_context_menu_find_sources_skipped">Already asked recently, or the transfer is not running</string>
+
+    <string name="list_item_menu">More actions</string>
+
+    <string name="transfers_context_menu_verify">Verify and repair</string>
+    <string name="verify_confirm_title">Verify and repair</string>
+    <string name="verify_confirm_message">The file on disk will be checked piece by piece against its ed2k hash. Pieces that do not match will be downloaded again. Peers are disconnected while the file is read. Continue?</string>
+
+    <string name="rescan_incomplete">Rescan unfinished downloads</string>
+    <string name="rescan_incomplete_summary">Look through the Incomplete folder for downloads the app has lost track of</string>
+    <string name="rescan_folder">Scan another folder…</string>
+    <string name="rescan_folder_summary">Look for unfinished downloads somewhere else - an SD card, or a folder an earlier version wrote to</string>
+    <string name="rescan_found">Continuing %1$d unfinished download(s)</string>
+    <string name="rescan_none">No unfinished download was found that the app did not already have. A file can only be continued if the resume record written beside it is still there.</string>
+    <string name="rescan_not_running">Start the ED2K service first</string>
+
+    <string name="folders">Folders</string>
+    <string name="folders_summary">The folders the app uses, and any you add</string>
+    <string name="folders_explanation">This client downloads but does not upload: none of these folders is offered to other users, and no file here is shared with anyone. Adding a folder lets unfinished downloads left in it be picked up and continued.</string>
+    <string name="folders_role_downloads">Finished downloads</string>
+    <string name="folders_role_incomplete">Unfinished downloads</string>
+    <string name="folders_role_added">Added by you</string>
+    <string name="folders_add">Add a folder…</string>
+    <string name="folders_scan">Scan</string>
+    <string name="folders_remove">Remove</string>
+    <string name="folders_pick_failed">That folder could not be opened</string>
+    <string name="rescan_none_short">Nothing to continue in that folder</string>
+
+    <!-- search -->
+    <string name="search_more_none">The server returned everything it had for this search</string>
+    <string name="search_more_no_server">Not connected to a server</string>
+    <string name="search_no_answer">The server did not answer</string>
 </resources>

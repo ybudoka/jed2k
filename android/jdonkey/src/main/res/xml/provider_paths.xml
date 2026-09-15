@@ -24,4 +24,8 @@
     <root-path
         name="external_files"
         path="/storage/" />
+    <!-- the log screen writes the buffer here before handing it to a share target -->
+    <cache-path
+        name="logs"
+        path="logs/" />
 </paths>

@@ -39,6 +39,10 @@ import java.util.Map;
  * JED2K stores all files to one place without sub dirs
  */
 public final class AndroidPaths {
+    // The slf4j imports were here before anything used them; data() logs now when it
+    // declines a configured folder, and that needs an actual logger.
+    private static final Logger LOG = LoggerFactory.getLogger(AndroidPaths.class);
+
     private static final boolean USE_EXTERNAL_STORAGE_DIR_ON_OR_AFTER_ANDROID_10 = true;
     private final Application app;
 
@@ -49,7 +53,121 @@ public final class AndroidPaths {
         this.app = app;
     }
 
+    /**
+     * Where downloads are written.
+     * <p>
+     * The folder the user picks in Settings is honoured here. It used to be stored, shown
+     * in the wizard, shown in the settings summary, and used to report free space - and
+     * then ignored at the one moment it mattered, because this method returned the public
+     * download folder whatever it said. Picking an SD card did nothing.
+     * <p>
+     * The choice is only taken when the folder is actually usable, which is asked of the
+     * platform file system rather than of File: under scoped storage a folder granted
+     * through the document picker is writable through a descriptor while File.canWrite()
+     * says no. An unusable choice falls back to the platform default with a line in the
+     * log saying which and why, rather than failing every download silently.
+     */
     public File data() {
+        final File chosen = configured();
+        return (chosen != null) ? chosen : platformDefault();
+    }
+
+    /**
+     * The setting the last decision was made for, and what it resolved to. data() is
+     * called constantly - by the incomplete folder, by the naming rule, by the free
+     * space readout - and the first version of this asked the file system whether the
+     * folder existed, was a directory and was writable on every one of those calls,
+     * logging a line each time it said no. Deciding once per value is enough; the value
+     * only changes when the user changes it.
+     */
+    private volatile String resolvedFor;
+    private volatile File resolved;
+
+    /**
+     * @return the configured download folder when it is set and usable, else null
+     */
+    private File configured() {
+        String path;
+
+        try {
+            path = ConfigurationManager.instance().getStoragePath();
+        } catch (Throwable t) {
+            // configuration not up yet - during very early startup
+            return null;
+        }
+
+        if (path == null || path.trim().isEmpty()) {
+            return null;
+        }
+
+        // The old default for this setting was the storage root, written by a bug that
+        // put the key twice. It is not a folder anything may write to on a modern
+        // Android, it was never a choice anybody made, and leaving it in place means
+        // Settings shows a folder that does nothing. Clear it rather than work around
+        // it for ever.
+        if (path.equals(legacyBadDefault())) {
+            LOG.info("clearing the legacy storage setting {}, it was never usable", path);
+            try {
+                ConfigurationManager.instance().setStoragePath(platformDefault().getAbsolutePath());
+            } catch (Throwable t) {
+                LOG.warn("unable to clear the legacy storage setting {}", t.toString());
+            }
+            return null;
+        }
+
+        if (path.equals(resolvedFor)) {
+            return resolved;
+        }
+
+        final File dir = new File(path);
+        resolvedFor = path;
+        resolved = probe(dir);
+        return resolved;
+    }
+
+    /**
+     * @return dir when it can be written to, else null - logged once per setting value
+     */
+    private File probe(final File dir) {
+        if (dir.equals(platformDefault())) {
+            return dir;     // nothing to check, it is the fallback anyway
+        }
+
+        try {
+            final FileSystem fs = Platforms.fileSystem();
+
+            if (!fs.exists(dir) && !fs.mkdirs(dir)) {
+                LOG.warn("configured storage {} cannot be created, using the default", dir);
+                return null;
+            }
+
+            if (!fs.isDirectory(dir)) {
+                LOG.warn("configured storage {} is not a directory, using the default", dir);
+                return null;
+            }
+
+            if (!fs.canWrite(dir)) {
+                LOG.warn("configured storage {} is not writable, using the default", dir);
+                return null;
+            }
+
+            LOG.info("downloads go to the configured storage {}", dir);
+            return dir;
+        } catch (Throwable t) {
+            LOG.warn("configured storage {} unusable ({}), using the default", dir, t.toString());
+            return null;
+        }
+    }
+
+    private static String legacyBadDefault() {
+        try {
+            return Environment.getExternalStorageDirectory().getAbsolutePath();
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private File platformDefault() {
         if (SystemUtils.hasAndroid10OrNewer()) {
             if (SystemUtils.hasAndroid10()) {
                 return app.getExternalFilesDir(null);

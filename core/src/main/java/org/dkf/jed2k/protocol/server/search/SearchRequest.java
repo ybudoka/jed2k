@@ -87,6 +87,16 @@ public class SearchRequest implements Serializable {
 
     private final ArrayDeque<Serializable> value;
 
+    /**
+     * Required by the packet combiner, which instantiates registered packets
+     * reflectively - see {@link org.dkf.jed2k.protocol.client.FileRequest#FileRequest()}.
+     * This one is only ever sent by us, but it is registered for both directions and an
+     * unexpected echo from a server should not kill the connection.
+     */
+    public SearchRequest() {
+        this(new ArrayDeque<Serializable>());
+    }
+
     SearchRequest(ArrayDeque<Serializable> value) {
         this.value = value;
         log.debug(dbgString(value));

@@ -19,6 +19,7 @@
 package org.dkf.jmule;
 
 import android.app.Application;
+import org.dkf.jmule.util.LogBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,10 +40,15 @@ public class MainApplication extends Application {
     public void onCreate() {
         super.onCreate();
 
+        // First, so the log screen has the startup sequence in it too - that is where
+        // the storage and session-creation failures show up.
+        LogBuffer.install();
+
         try {
 
             Platforms.set(new AndroidPlatform(this));
             ConfigurationManager.create(this);
+            LogBuffer.setVerbose(ConfigurationManager.instance().getBoolean(Constants.PREF_KEY_GUI_VERBOSE_LOG));
             NetworkManager.create(this);
             Engine.instance().onApplicationCreate(this);
         } catch (Exception e) {

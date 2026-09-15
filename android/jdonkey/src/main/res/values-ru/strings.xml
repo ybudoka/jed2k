@@ -146,6 +146,13 @@
     <string name="transfer_state_downloading">Загружается</string>
     <string name="transfer_state_paused">Пауза</string>
     <string name="transfer_state_stalled">Ожидает источников</string>
+    <string name="transfer_state_verifying">Проверка</string>
+    <string name="transfers_context_menu_verify">Проверить и восстановить</string>
+    <string name="transfer_verify_started">Файл проверяется на диске, повреждённые части будут загружены заново</string>
+    <string name="transfer_verify_already_running">Проверка уже выполняется</string>
+    <string name="transfer_verify_ok">Файл проверен: все %1$d частей в порядке</string>
+    <string name="transfer_verify_repairing">Восстановление: %1$d из %2$d частей повреждены и будут загружены заново</string>
+    <string name="transfer_verify_failed">Проверка не удалась: %1$s</string>
     <string name="transfers_context_menu_copy_link">Копировать ссылку</string>
     <string name="transfers_context_menu_copy_link_copied">Ссылка скопирована в буфер обмена</string>
     <string name="transfers_max_downloads">Трансферов</string>

@@ -19,8 +19,13 @@ import java.io.IOException;
  */
 public class AndroidFileHandler extends FileHandler {
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(AndroidFileHandler.class);
-    private final DocumentFile doc;
-    private final ParcelFileDescriptor descriptor;
+    private DocumentFile doc;
+    private ParcelFileDescriptor descriptor;
+    /**
+     * set once close() released the descriptor; the next channel request re-opens the
+     * document, which is what verify and repair needs on a finished transfer
+     */
+    private boolean released = false;
 
     public AndroidFileHandler(final File file, final DocumentFile doc, final ParcelFileDescriptor descriptor) {
         super(file);
@@ -28,14 +33,42 @@ public class AndroidFileHandler extends FileHandler {
         this.descriptor = descriptor;
     }
 
+    private ParcelFileDescriptor descriptor() throws JED2KException {
+        if (released) {
+            if (!(Platforms.fileSystem() instanceof LollipopFileSystem)) {
+                throw new JED2KException(ErrorCode.IO_EXCEPTION);
+            }
+
+            LollipopFileSystem fs = (LollipopFileSystem) Platforms.fileSystem();
+            android.util.Pair<ParcelFileDescriptor, DocumentFile> reopened = fs.openFD(file, "rw");
+            if (reopened == null || reopened.first == null || reopened.second == null) {
+                log.error("unable to re-open {}", file);
+                throw new JED2KException(ErrorCode.IO_EXCEPTION);
+            }
+
+            log.info("re-opened {}", file);
+            descriptor = reopened.first;
+            doc = reopened.second;
+            released = false;
+        }
+
+        return descriptor;
+    }
+
     @Override
     protected FileOutputStream allocateOutputStream() throws JED2KException {
-        return new FileOutputStream(descriptor.getFileDescriptor());
+        return new FileOutputStream(descriptor().getFileDescriptor());
     }
 
     @Override
     protected FileInputStream allocateInputStream() throws JED2KException {
-        return new FileInputStream(descriptor.getFileDescriptor());
+        return new FileInputStream(descriptor().getFileDescriptor());
+    }
+
+    @Override
+    public void retarget(final File target) {
+        // drops the descriptor of the old document; descriptor() re-opens the new path
+        super.retarget(target);
     }
 
     @Override
@@ -48,10 +81,13 @@ public class AndroidFileHandler extends FileHandler {
     @Override
     public void close() {
         super.close();
+        if (released) return;
         try {
             descriptor.close();
         } catch(IOException e) {
             log.error("unable to close file descriptor {}", e.toString());
+        } finally {
+            released = true;
         }
     }
 }

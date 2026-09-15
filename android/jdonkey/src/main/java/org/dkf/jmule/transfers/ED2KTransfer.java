@@ -142,6 +142,16 @@ public class ED2KTransfer implements Transfer {
     }
 
     @Override
+    public List<String> getRemoteFileNames() {
+        return handle.getRemoteFileNames();
+    }
+
+    @Override
+    public boolean requestMoreSources() {
+        return handle.requestMoreSources();
+    }
+
+    @Override
     public boolean isPaused() {
         return handle.isPaused();
     }
@@ -163,7 +173,23 @@ public class ED2KTransfer implements Transfer {
     }
 
     @Override
+    public void verify() {
+        handle.verify();
+    }
+
+    @Override
+    public boolean isVerifying() {
+        return handle.isVerifying();
+    }
+
+    @Override
+    public int getVerifyProgress() {
+        return handle.getVerifyProgress();
+    }
+
+    @Override
     public State getState() {
+        if (isVerifying()) return State.VERIFYING;
         if (isPaused()) return State.PAUSED;
 
         if (isDownloading()) {

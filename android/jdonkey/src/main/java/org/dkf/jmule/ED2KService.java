@@ -47,6 +47,7 @@ import org.dkf.jed2k.alert.TransferPausedAlert;
 import org.dkf.jed2k.alert.TransferRemovedAlert;
 import org.dkf.jed2k.alert.TransferResumeDataAlert;
 import org.dkf.jed2k.alert.TransferResumedAlert;
+import org.dkf.jed2k.alert.TransferVerifiedAlert;
 import org.dkf.jed2k.disk.DesktopFileHandler;
 import org.dkf.jed2k.exception.ErrorCode;
 import org.dkf.jed2k.exception.JED2KException;
@@ -62,6 +63,8 @@ import org.dkf.jed2k.protocol.kad.KadId;
 import org.dkf.jed2k.protocol.kad.KadNodesDat;
 import org.dkf.jed2k.protocol.server.search.SearchRequest;
 import org.dkf.jmule.activities.MainActivity;
+import org.dkf.jed2k.util.FileNames;
+import org.dkf.jmule.util.MulticastLease;
 import org.slf4j.Logger;
 
 import java.io.BufferedReader;
@@ -361,7 +364,12 @@ public class ED2KService extends JobIntentService {
         startingInProgress = false;
 
         try {
-            if (forwardPorts) session.startUPnP();
+            if (forwardPorts) {
+                // SSDP discovery is multicast, and Android filters multicast in the
+                // Wi-Fi driver unless someone holds a lock - see MulticastLease
+                MulticastLease.acquire(this);
+                session.startUPnP();
+            }
             else session.stopUPnP();
         } catch(JED2KException e) {
             log.error("start upnp error {}", e);
@@ -456,6 +464,17 @@ public class ED2KService extends JobIntentService {
     }
 
     public synchronized boolean isDhtEnabled() {
+        // A tracker whose thread has ended is not a tracker. It used to stay registered
+        // anyway, so the app reported DHT as enabled for the rest of the run while every
+        // source lookup threw "DHT tracker was already aborted" once per second.
+        if (dhtTracker != null && dhtTracker.getState() == Thread.State.TERMINATED) {
+            log.warn("[ED2K service] DHT tracker thread has ended, dropping it");
+            if (session != null) {
+                session.setDhtTracker(null);
+            }
+            dhtTracker = null;
+        }
+
         return dhtTracker != null;
     }
 
@@ -702,19 +721,63 @@ public class ED2KService extends JobIntentService {
             }
         }
         */
+        // The database write goes first and on its own. Everything after it - moving a
+        // finished file, writing the record beside it - is file I/O that can throw, and
+        // when it was ordered ahead of this, a single failure there meant the resume
+        // data was never stored at all and the download began again from nothing on the
+        // next launch. Losing the extras is a degraded feature; losing this is the
+        // whole download.
         try {
             dbHelper.saveResumeData(alert.trd);
         } catch (JED2KException e) {
-            log.error("[ED2K service] save resume data {} failed {}"
-                    , alert.hash, e);
+            log.error("[ED2K service] save resume data {} failed {}", alert.hash, e);
         } catch (Throwable e) {
-            log.error("save resume data error {}", e.getMessage());
+            log.error("[ED2K service] save resume data error {}", e.getMessage());
+        }
+
+        try {
+            File file = new File(alert.trd.getFilepath().asString());
+
+            // The transfer said it was finished; this is the first moment its resume
+            // data exists, so the file is moved and the record retargeted together.
+            if (pendingMove.remove(alert.hash)) {
+                final File before = file;
+                file = moveToFinished(file, alert.trd);
+                // the path changed, so the stored record has to follow it
+                dbHelper.saveResumeData(alert.trd);
+                // and so has the live transfer, or verify and repair would look for the
+                // file where it no longer is
+                if (!file.equals(before)) {
+                    session.findTransfer(alert.hash).retargetFile(file);
+                }
+            }
+
+            // A second copy, next to the file itself. The database is app-private and
+            // does not survive a reinstall or "clear data"; this one does, and is what
+            // the startup scan recovers a download from.
+            final File incomplete = IncompleteFiles.folder();
+            if (incomplete != null && incomplete.equals(file.getParentFile())) {
+                IncompleteFiles.writeResume(file, alert.trd);
+            }
+        } catch (Throwable e) {
+            log.warn("[ED2K service] resume record beside {} failed: {}", alert.hash, e.toString());
         }
     }
 
     public void processAlert(final Alert a) {
         try {
             if (a instanceof ListenAlert) {
+                // Worth a line of its own: without this socket the server's callback
+                // requests have nowhere to land, which means Low ID sources - most of
+                // them - can never be downloaded from.
+                ListenAlert la = (ListenAlert) a;
+                if (la.details == null || la.details.isEmpty()) {
+                    log.info("[ED2K service] listening on port {}", la.port);
+                } else {
+                    log.error("[ED2K service] unable to listen on port {}: {}, incoming connections are disabled"
+                            , la.port, la.details);
+                }
+
                 for (final AlertListener ls : listeners) ls.onListen((ListenAlert) a);
             } else if (a instanceof SearchResultAlert) {
                 // inplace filtering bad words in case when search is limited or we have blocked hashes dictionary
@@ -743,6 +806,26 @@ public class ED2KService extends JobIntentService {
                 for (final AlertListener ls : listeners) ls.onTransferResumed((TransferResumedAlert) a);
             } else if (a instanceof TransferPausedAlert) {
                 for (final AlertListener ls : listeners) ls.onTransferPaused((TransferPausedAlert) a);
+            } else if (a instanceof TransferVerifiedAlert) {
+                final TransferVerifiedAlert va = (TransferVerifiedAlert) a;
+                log.info("[ED2K service] transfer verified {}: {} of {} pieces ok, {}", va.hash, va.piecesOk, va.piecesTotal, va.ec.getDescription());
+                // the picker was rebuilt from disk: persist it so a restart keeps the repaired state
+                session.saveResumeData();
+                final String message;
+                if (!va.isOk()) {
+                    message = getResources().getString(R.string.transfer_verify_failed, va.ec.getDescription());
+                } else if (va.isRepairNeeded()) {
+                    message = getResources().getString(R.string.transfer_verify_repairing, va.piecesTotal - va.piecesOk, va.piecesTotal);
+                } else {
+                    message = getResources().getString(R.string.transfer_verify_ok, va.piecesTotal);
+                }
+                notificationHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        createTransferNotification(message, "", va.hash);
+                    }
+                });
+                for (final AlertListener ls : listeners) ls.onTransferVerified(va);
             } else if (a instanceof TransferAddedAlert) {
                 localHashes.put(((TransferAddedAlert) a).hash, 0);
                 log.info("[ED2K service] new transfer added {} save resume data now", ((TransferAddedAlert) a).hash);
@@ -757,6 +840,8 @@ public class ED2KService extends JobIntentService {
                 saveResumeData((TransferResumeDataAlert) a);
             } else if (a instanceof TransferFinishedAlert) {
                 log.info("[ED2K service] transfer finished {} save resume data", ((TransferFinishedAlert) a).hash);
+                // handled when the resume data comes back, see saveResumeData()
+                pendingMove.add(((TransferFinishedAlert) a).hash);
                 session.saveResumeData();
                 notificationHandler.post(new Runnable() {
                     @Override
@@ -814,7 +899,7 @@ public class ED2KService extends JobIntentService {
                 File file = null;
 
                 if (atp != null) {
-                    file = new File(atp.getFilepath().asString());
+                    file = relocate(new File(atp.getFilepath().asString()));
                     if (Platforms.get().saf()) {
                         log.info("[ED2k service] restore file {}", file.getName());
                         LollipopFileSystem fs = (LollipopFileSystem) Platforms.fileSystem();
@@ -833,6 +918,13 @@ public class ED2KService extends JobIntentService {
                             log.warn("[ED2K service] unable to restore transfer {}: file not exists", file);
                         }
                     }
+
+                    // relocate() may have found it elsewhere; store that so the next
+                    // launch does not have to look again
+                    if (handle != null && !file.getAbsolutePath().equals(atp.getFilepath().asString())) {
+                        atp.getFilepath().assignString(file.getAbsolutePath());
+                        dbHelper.saveResumeData(atp);
+                    }
                 }
 
                 if (handle != null) {
@@ -850,6 +942,146 @@ public class ED2KService extends JobIntentService {
             }
         } catch (Exception e) {
             log.error("restore transfer and publish error {}", e.getMessage());
+        }
+
+        recoverIncompleteTransfers();
+    }
+
+    /**
+     * Picks up unfinished downloads the database does not know about.
+     * <p>
+     * The database is app-private: it is gone after a reinstall or "clear data", and a
+     * second install of the app sharing the same download folder has its own. The files
+     * survive all of that, and so does the resume record written next to each one - so
+     * the folder is scanned and anything not already restored is added back, complete
+     * with which pieces it already has.
+     */
+    /**
+     * Finds a transfer's file when it is not where the record says.
+     * <p>
+     * A path recorded on one run is not guaranteed to resolve on the next: the download
+     * folder moves when the storage setting changes or when a previously chosen folder
+     * stops being writable, and unfinished downloads gained a subfolder of their own.
+     * The file name is the stable part, so it is looked for in the two folders it can
+     * be in before the transfer is written off - which is what "file not exists" used
+     * to mean, taking the download with it.
+     *
+     * @return the file where it actually is, or the original path when it is nowhere
+     */
+    private File relocate(final File recorded) {
+        final FileSystem fs = Platforms.fileSystem();
+
+        if (fs.exists(recorded)) {
+            return recorded;
+        }
+
+        final File[] candidates = { IncompleteFiles.folder(), Platforms.data() };
+
+        for (final File dir : candidates) {
+            if (dir == null || dir.equals(recorded.getParentFile())) {
+                continue;
+            }
+
+            final File moved = new File(dir, recorded.getName());
+            if (fs.exists(moved)) {
+                log.info("[ED2K service] {} is no longer at {}, found it in {}"
+                        , recorded.getName(), recorded.getParent(), dir);
+                return moved;
+            }
+        }
+
+        return recorded;
+    }
+
+    private void recoverIncompleteTransfers() {
+        recoverIncompleteTransfers(IncompleteFiles.folder());
+    }
+
+    /**
+     * The same over a folder of the caller's choosing, so unfinished downloads left
+     * somewhere else - by an older version writing straight into the download folder, or
+     * by another install - can be picked up on demand from Settings.
+     *
+     * @return how many transfers were added
+     */
+    public int recoverIncompleteTransfers(final File dir) {
+        try {
+            final List<AddTransferParams> candidates = IncompleteFiles.scan(dir, getCacheDir());
+            int recovered = 0;
+
+            for (final AddTransferParams atp : candidates) {
+                if (atp == null || session == null) {
+                    continue;
+                }
+
+                if (session.findTransfer(atp.getHash()).isValid()) {
+                    continue;   // the database already restored this one
+                }
+
+                final File file = new File(atp.getFilepath().asString());
+
+                try {
+                    if (Platforms.get().saf()) {
+                        LollipopFileSystem fs = (LollipopFileSystem) Platforms.fileSystem();
+                        android.util.Pair<ParcelFileDescriptor, DocumentFile> fd = fs.openFD(file, "rw");
+                        if (fd == null || fd.first == null || fd.second == null) {
+                            log.warn("[ED2K service] cannot open recovered file {}", file.getName());
+                            continue;
+                        }
+                        atp.setExternalFileHandler(new AndroidFileHandler(file, fd.second, fd.first));
+                    } else {
+                        atp.setExternalFileHandler(new DesktopFileHandler(file));
+                    }
+
+                    session.addTransfer(atp);
+                    dbHelper.saveResumeData(atp);
+                    recovered++;
+                    log.info("[ED2K service] recovered unfinished download {}", file.getName());
+                } catch (Throwable t) {
+                    log.warn("[ED2K service] unable to recover {}: {}", file.getName(), t.toString());
+                }
+            }
+
+            if (recovered > 0) {
+                log.info("[ED2K service] recovered {} unfinished download(s) from {}"
+                        , recovered, IncompleteFiles.FOLDER);
+            }
+
+            sweepFinishedOutOfIncomplete();
+            return recovered;
+        } catch (Throwable t) {
+            log.error("[ED2K service] incomplete scan failed {}", t.toString());
+            return 0;
+        }
+    }
+
+    /**
+     * Anything already complete but still sitting in the incomplete folder is queued for
+     * the move. That happens when the copy failed last time, or when the app was killed
+     * between the last piece landing and the move.
+     */
+    private void sweepFinishedOutOfIncomplete() {
+        final File incomplete = IncompleteFiles.folder();
+        if (incomplete == null || session == null) {
+            return;
+        }
+
+        boolean any = false;
+
+        for (final TransferHandle handle : getTransfers()) {
+            if (!handle.isValid() || !handle.isFinished()) {
+                continue;
+            }
+
+            final File file = handle.getFile();
+            if (file != null && incomplete.equals(file.getParentFile())) {
+                pendingMove.add(handle.getHash());
+                any = true;
+            }
+        }
+
+        if (any) {
+            session.saveResumeData();
         }
     }
 
@@ -1184,9 +1416,193 @@ public class ED2KService extends JobIntentService {
         log.info("stop self {} last id: {}", b?"true":"false", lastStartId);
     }
 
-    public TransferHandle addTransfer(final Hash hash, final long fileSize, final File file)
+    /**
+     * Picks a name for a new download that nothing else is using.
+     * <p>
+     * Two different hashes with the same name is routine on ed2k - the same release
+     * repacked, or just "video.mp4" - and both used to be written to one path, so the
+     * transfers interleaved their writes and turned two good sources into two corrupt
+     * files. A name left over from an earlier download does the same.
+     * <p>
+     * Both a file already on disk and a name another live transfer is heading for count
+     * as taken: two downloads started seconds apart would otherwise agree on a name
+     * before either file existed.
+     */
+    private File uniqueTargetFile(final File requested) {
+        // Unfinished downloads live in their own folder: a half-downloaded file sitting
+        // in the download folder is indistinguishable by name from a finished one, and
+        // a folder of its own is also what makes the recovery scan possible.
+        final File incomplete = IncompleteFiles.folder();
+        final File file = (incomplete != null) ? new File(incomplete, requested.getName()) : requested;
+
+        final File dir = file.getParentFile();
+        if (dir == null) {
+            return file;
+        }
+
+        // The name has to be free in the folder it will end up in as well, or the move
+        // at the end of the download would collide instead.
+        final File finalDir = Platforms.data();
+
+        final Set<String> claimed = new HashSet<>();
+        for (final TransferHandle handle : getTransfers()) {
+            final File target = handle.getFile();
+            if (target != null && dir.equals(target.getParentFile())) {
+                claimed.add(target.getName());
+            }
+        }
+
+        final FileSystem fs = Platforms.fileSystem();
+
+        final String name = FileNames.uniqueName(file.getName(), new FileNames.Taken() {
+            @Override
+            public boolean contains(final String candidate) {
+                return claimed.contains(candidate)
+                        || fs.exists(new File(dir, candidate))
+                        || (finalDir != null && fs.exists(new File(finalDir, candidate)));
+            }
+        });
+
+        if (name == null || name.equals(file.getName())) {
+            return file;
+        }
+
+        log.info("[ED2K service] {} is taken, downloading as {}", file.getName(), name);
+        return new File(dir, name);
+    }
+
+    /**
+     * Hashes whose file still has to be moved out of the incomplete folder. A transfer
+     * announces that it finished before its resume data is written, and the move is done
+     * once that data arrives so the record can be pointed at the new path in the same
+     * step.
+     */
+    private final Set<Hash> pendingMove = Collections.synchronizedSet(new HashSet<Hash>());
+
+    /**
+     * Moves a finished download out of the incomplete folder and retargets its resume
+     * record.
+     * <p>
+     * Every failure leaves the file exactly where it is. It is complete and usable in
+     * the incomplete folder; refusing to finish the download over a failed copy would be
+     * the worse outcome.
+     *
+     * @return the file's new location, or its old one when nothing was moved
+     */
+    private File moveToFinished(final File source, final AddTransferParams atp) {
+        final File incomplete = IncompleteFiles.folder();
+        final File finalDir = Platforms.data();
+
+        if (source == null || incomplete == null || finalDir == null
+                || !incomplete.equals(source.getParentFile())) {
+            return source;
+        }
+
+        final FileSystem fs = Platforms.fileSystem();
+
+        final String name = FileNames.uniqueName(source.getName(), new FileNames.Taken() {
+            @Override
+            public boolean contains(final String candidate) {
+                return fs.exists(new File(finalDir, candidate));
+            }
+        });
+
+        final File destination = new File(finalDir, name);
+        final long expected = fs.length(source);
+
+        if (!fs.copy(source, destination)) {
+            log.warn("[ED2K service] unable to move {} out of {}, leaving it there"
+                    , source.getName(), IncompleteFiles.FOLDER);
+            return source;
+        }
+
+        if (fs.length(destination) != expected) {
+            log.error("[ED2K service] short copy of {} ({} of {} bytes), keeping the original"
+                    , source.getName(), fs.length(destination), expected);
+            fs.delete(destination);
+            return source;
+        }
+
+        IncompleteFiles.deleteResume(source);
+
+        if (!fs.delete(source)) {
+            log.warn("[ED2K service] {} was copied to {} but the original could not be removed"
+                    , source.getName(), destination);
+        }
+
+        log.info("[ED2K service] finished {} moved to {}", source.getName(), destination);
+
+        if (atp != null) {
+            try {
+                atp.getFilepath().assignString(destination.getAbsolutePath());
+            } catch (Throwable t) {
+                log.warn("[ED2K service] unable to retarget resume record {}", t.toString());
+            }
+        }
+
+        return destination;
+    }
+
+    /**
+     * Picks up an unfinished download of this hash that is already on disk.
+     *
+     * @return its handle, or null when there is none or it cannot be opened
+     */
+    private TransferHandle resumeExisting(final Hash hash) {
+        try {
+            final AddTransferParams atp = IncompleteFiles.findByHash(hash, getCacheDir());
+            if (atp == null) {
+                return null;
+            }
+
+            final File file = new File(atp.getFilepath().asString());
+
+            if (Platforms.get().saf()) {
+                LollipopFileSystem fs = (LollipopFileSystem) Platforms.fileSystem();
+                android.util.Pair<ParcelFileDescriptor, DocumentFile> fd = fs.openFD(file, "rw");
+                if (fd == null || fd.first == null || fd.second == null) {
+                    log.warn("[ED2K service] found a partial {} but cannot open it", file.getName());
+                    return null;
+                }
+                atp.setExternalFileHandler(new AndroidFileHandler(file, fd.second, fd.first));
+            } else {
+                atp.setExternalFileHandler(new DesktopFileHandler(file));
+            }
+
+            log.info("[ED2K service] continuing the partial download already at {}", file);
+            final TransferHandle handle = session.addTransfer(atp);
+            dbHelper.saveResumeData(atp);
+            return handle;
+        } catch (Throwable t) {
+            log.warn("[ED2K service] unable to continue an existing partial for {}: {}", hash, t.toString());
+            return null;
+        }
+    }
+
+    public TransferHandle addTransfer(final Hash hash, final long fileSize, final File requested)
             throws JED2KException {
         if(session != null) {
+            // session.addTransfer() hands back the existing transfer when the hash is
+            // already there and ignores the file, so renaming first would create an
+            // empty file for nothing. Asked of the session rather than of the
+            // localHashes cache, which is fed from alerts and can lag behind it.
+            final boolean known = session.findTransfer(hash).isValid();
+
+            if (!known) {
+                // An unfinished download of this exact hash may already be on disk with
+                // its resume record beside it - the app was reinstalled, its data was
+                // cleared, or the transfer was removed from the list but not from
+                // storage. Continuing that is the whole point of keeping the record;
+                // without this the unique-name rule below would helpfully step around
+                // the partial file and start the same download again from zero.
+                final TransferHandle resumed = resumeExisting(hash);
+                if (resumed != null) {
+                    return resumed;
+                }
+            }
+
+            final File file = known ? requested : uniqueTargetFile(requested);
+
             log.info("[ED2K service] start transfer {} file {} size {}"
                     , hash.toString()
                     , file
@@ -1232,6 +1648,19 @@ public class ED2KService extends JobIntentService {
         }
     }
 
+    /**
+     * verify and repair transfer's file: re-hash it from disk, download again what is broken
+     */
+    public void verifyTransfer(final Hash h) {
+        if (session != null) {
+            TransferHandle handle = session.findTransfer(h);
+            if (handle.isValid()) {
+                log.info("[ED2K service] verify transfer {}", h);
+                handle.verify();
+            }
+        }
+    }
+
     public void configureSession() {
         if (session != null) {
             log.info("configure session: {}", settings.toString());
@@ -1252,6 +1681,7 @@ public class ED2KService extends JobIntentService {
             forwardPorts = forward;
             if (session != null) {
                 if (forward) {
+                    MulticastLease.acquire(this);
                     session.startUPnP();
                 } else {
                     session.stopUPnP();
@@ -1309,8 +1739,20 @@ public class ED2KService extends JobIntentService {
 
     public void setServerPing(boolean value) { settings.serverPingTimeout = value?60:0; }
 
-    public void setMaxPeerListSize(int maxSize) {
-        settings.maxPeerListSize = maxSize;
+    /**
+     * Backs the "Max Total Connections" preference.
+     * <p>
+     * It used to assign settings.maxPeerListSize, a field nothing in the core ever reads
+     * - Policy caps its peer list with its own static MAX_PEER_LIST_SIZE - so the setting
+     * did nothing at all, whatever the user picked. The real cap on simultaneous peer
+     * connections is settings.sessionConnectionsLimit, which stayed hardcoded.
+     */
+    public void setMaxConnections(int maxConnections) {
+        if (maxConnections <= 0) return;
+        settings.sessionConnectionsLimit = maxConnections;
+        // kept in sync so the value reported by Settings.toString() is not misleading
+        settings.maxPeerListSize = Math.max(maxConnections, settings.maxPeerListSize);
+        log.info("[ED2K service] max simultaneous connections set to {}", maxConnections);
     }
 
     public void setUserAgent(Hash hash) {

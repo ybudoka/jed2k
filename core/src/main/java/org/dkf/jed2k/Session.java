@@ -10,6 +10,7 @@ import org.dkf.jed2k.disk.TransferCallable;
 import org.dkf.jed2k.exception.BaseErrorCode;
 import org.dkf.jed2k.exception.ErrorCode;
 import org.dkf.jed2k.exception.JED2KException;
+import org.dkf.jed2k.util.PortBinder;
 import org.dkf.jed2k.kad.DhtTracker;
 import org.dkf.jed2k.kad.KadSearchEntryDistinct;
 import org.dkf.jed2k.kad.Listener;
@@ -260,7 +261,22 @@ public class Session extends Thread {
                 assert selector != null;
                 log.info("start listening on port {}", settings.listenPort);
                 ssc = ServerSocketChannel.open();
-                ssc.socket().bind(new InetSocketAddress(settings.listenPort));
+
+                // Nothing reaches us without this socket - Low ID sources are downloaded
+                // from by having the server ask them to call back here - so a port that
+                // is merely taken must not cost us the whole listener. Whichever port we
+                // end up on is announced to the server at login, so any of them works.
+                final ServerSocketChannel channel = ssc;
+                PortBinder.bind(settings.listenPort, new PortBinder.Bind() {
+                    @Override
+                    public void bind(int port) throws IOException {
+                        channel.socket().bind(new InetSocketAddress(port));
+                    }
+                });
+
+                settings.listenPort = ssc.socket().getLocalPort();
+                log.info("listening on port {}", settings.listenPort);
+
                 ssc.configureBlocking(false);
                 ssc.register(selector, SelectionKey.OP_ACCEPT);
                 pushAlert(new ListenAlert("", settings.listenPort));

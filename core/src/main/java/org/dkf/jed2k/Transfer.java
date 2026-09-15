@@ -4,6 +4,7 @@ import org.dkf.jed2k.alert.*;
 import org.dkf.jed2k.data.PieceBlock;
 import org.dkf.jed2k.disk.AsyncRelease;
 import org.dkf.jed2k.disk.AsyncRestore;
+import org.dkf.jed2k.disk.AsyncVerify;
 import org.dkf.jed2k.disk.PieceManager;
 import org.dkf.jed2k.exception.BaseErrorCode;
 import org.dkf.jed2k.exception.ErrorCode;
@@ -59,6 +60,17 @@ public class Transfer {
 
     private boolean pause = false;
     private boolean abort = false;
+    /**
+     * verify and repair pass in progress: peers are kept away until the disk thread
+     * reports which pieces are actually good
+     */
+    private boolean verifying = false;
+
+    /**
+     * pieces checked so far by the running verification, in percent; written by the disk
+     * thread, read by whoever asks for the status
+     */
+    private volatile int verifyProgress = 0;
     private HashSet<PeerConnection> connections = new HashSet<PeerConnection>();
 
     /**
@@ -70,6 +82,13 @@ public class Transfer {
      * session time when new peers request to KAD will be executed
      */
     private long nextTimeForDhtSourcesRequest = 0;
+
+    /**
+     * Floor between two user-triggered source requests. See {@link #requestMoreSources}.
+     */
+    private static final long MANUAL_SOURCES_REQUEST_INTERVAL = Time.minutes(1);
+
+    private long lastManualSourcesRequest = 0;
 
     /**
      * disk io
@@ -89,6 +108,14 @@ public class Transfer {
     private TransferStatus.TransferState state = TransferStatus.TransferState.LOADING_RESUME_DATA;
 
     private PieceBlock lastResumeBlock = null;
+
+    /**
+     * Distinct names the sources advertise for this hash, in the order first seen.
+     * ed2k has no authoritative file name - each source reports its own - so these are
+     * accumulated as peers answer and kept after they disconnect, which is the point:
+     * the list is what lets a user spot a mislabelled or faked file.
+     */
+    private final LinkedHashSet<String> remoteFileNames = new LinkedHashSet<>();
 
     private SpeedMonitor speedMon = new SpeedMonitor(30);
 
@@ -191,6 +218,87 @@ public class Transfer {
         }
     }
 
+    /**
+     * Asks for sources again at the next tick, ignoring the back-off timers.
+     * <p>
+     * The automatic schedule is deliberately slow once a transfer has any peer at all -
+     * twenty minutes between server requests - because ed2k servers ban clients that
+     * re-ask for the same file too often. That is right for a background transfer and
+     * wrong for a user staring at a download that is going nowhere, hence this.
+     * <p>
+     * The requests themselves are left to {@link #secondTick}, so they go through the
+     * same paused/aborted/finished and connection-limit checks as the scheduled ones.
+     *
+     * @return false when nothing was scheduled, and the caller should say why: the
+     * transfer is not running, it is already at the connection limit, or it was asked
+     * too recently
+     */
+    public boolean requestMoreSources() {
+        final long now = Time.currentTime();
+        final int limit = (session != null) ? session.settings.sessionConnectionsLimit : 0;
+
+        if (!allowManualSourcesRequest(!isPaused() && !isAborted() && !isFinished()
+                , connections.size()
+                , limit
+                , now
+                , lastManualSourcesRequest)) {
+            log.debug("[transfer] manual sources request ignored for {}", hash);
+            return false;
+        }
+
+        log.info("[transfer] manual sources request for {}", hash);
+        lastManualSourcesRequest = now;
+        nextTimeForSourcesRequest = 0;
+        nextTimeForDhtSourcesRequest = 0;
+        return true;
+    }
+
+    /**
+     * The decision behind {@link #requestMoreSources}, kept free of transfer state so it
+     * can be exercised directly.
+     *
+     * @param running           transfer is neither paused, aborted nor finished
+     * @param connections       peers currently attached
+     * @param connectionsLimit  session-wide connection limit
+     * @param now               current time
+     * @param lastRequest       time of the previous manual request, 0 when there was none
+     */
+    public static boolean allowManualSourcesRequest(boolean running
+            , int connections
+            , int connectionsLimit
+            , long now
+            , long lastRequest) {
+
+        if (!running) return false;
+
+        // nowhere to put a new source
+        if (connections >= connectionsLimit) return false;
+
+        // A button is easy to tap twice, and servers ban clients that re-ask for the
+        // same file too often.
+        return lastRequest == 0 || now - lastRequest >= MANUAL_SOURCES_REQUEST_INTERVAL;
+    }
+
+    /**
+     * Records a name a source reports for this file. Called from the peer connection
+     * when OP_REQFILENAMEANSWER arrives; duplicates are ignored.
+     */
+    void addRemoteFileName(final String name) {
+        if (name == null || name.isEmpty()) return;
+        synchronized (remoteFileNames) {
+            remoteFileNames.add(name);
+        }
+    }
+
+    /**
+     * @return snapshot of the distinct names sources reported, first seen first
+     */
+    public List<String> getRemoteFileNames() {
+        synchronized (remoteFileNames) {
+            return new ArrayList<>(remoteFileNames);
+        }
+    }
+
     public Hash getHash() {
         return hash;
     }
@@ -242,8 +350,12 @@ public class Transfer {
         return abort;
     }
 
+    final boolean isVerifying() {
+        return verifying;
+    }
+
     final boolean wantMorePeers() {
-        return !isPaused() && !isFinished() && policy.numConnectCandidates() > 0;
+        return !isPaused() && !isVerifying() && !isFinished() && policy.numConnectCandidates() > 0;
     }
 
     void addStats(Statistics s) {
@@ -276,6 +388,7 @@ public class Transfer {
         assert c != null;
         if (isPaused()) throw new JED2KException(ErrorCode.TRANSFER_PAUSED);
         if (isAborted()) throw new JED2KException(ErrorCode.TRANSFER_ABORTED);
+        if (isVerifying()) throw new JED2KException(ErrorCode.TRANSFER_VERIFYING);
         if (isFinished()) throw new JED2KException(ErrorCode.TRANSFER_FINISHED);
         policy.newConnection(c);
         connections.add(c);
@@ -305,18 +418,31 @@ public class Transfer {
 
 	void secondTick(final Statistics accumulator, long tickIntervalMS) {
 
-        if (!isPaused() && !isAborted() && !isFinished() && connections.isEmpty()) {
+        // Sources were only ever requested while connections.isEmpty(), so the moment a
+        // single peer attached - including one that merely put us in its upload queue and
+        // never sent a byte - the transfer stopped looking for sources on both the server
+        // and KAD, permanently. That is the main reason a download settles on one or two
+        // slow peers and stays there.
+        //
+        // Keep asking while there is room for more peers, and back off once we have some:
+        // ed2k servers ban clients that re-ask for the same file too often, so the short
+        // interval is reserved for a transfer that has nothing at all.
+        final boolean wantsMoreSources = connections.size() < session.settings.sessionConnectionsLimit;
 
-            if (nextTimeForSourcesRequest < Time.currentTime()) {
+        if (!isPaused() && !isAborted() && !isVerifying() && !isFinished() && wantsMoreSources) {
+            final boolean starving = connections.isEmpty();
+            final long now = Time.currentTime();
+
+            if (nextTimeForSourcesRequest < now) {
                 log.debug("[transfer] request peers on server {}", hash);
                 session.sendSourcesRequest(hash, size);
-                nextTimeForSourcesRequest = Time.currentTime() + Time.minutes(1);
+                nextTimeForSourcesRequest = now + (starving ? Time.minutes(1) : Time.minutes(20));
             }
 
-            if (nextTimeForDhtSourcesRequest < Time.currentTime()) {
+            if (nextTimeForDhtSourcesRequest < now) {
                 log.debug("[transfer] request peers on KAD {}", hash);
                 session.sendDhtSourcesRequest(hash, size, this);
-                nextTimeForDhtSourcesRequest = Time.currentTime() + Time.minutes(10);
+                nextTimeForDhtSourcesRequest = now + (starving ? Time.minutes(10) : Time.minutes(15));
             }
         }
 
@@ -381,6 +507,104 @@ public class Transfer {
     }
 
     /**
+     * verify and repair: re-hash the whole file from disk and put every piece that does
+     * not match back into the download queue
+     * <p>
+     * Works on finished and unfinished transfers alike. Peers are disconnected first so
+     * nothing is written while the disk thread reads; the check itself is queued behind
+     * every write already submitted for this transfer, so it sees the final state of the
+     * file. Result arrives in onVerifyCompleted().
+     */
+    void verify() {
+        if (isAborted() || isVerifying()) return;
+
+        if (hashSet.isEmpty() && numPieces == 1) {
+            // one piece: its hash is the file hash itself
+            hashSet.add(hash);
+        }
+
+        if (!isValidHashSet(hashSet)) {
+            log.warn("{} can not be verified: no valid hash set yet", hash);
+            session.pushAlert(new TransferVerifiedAlert(hash, 0, numPieces, ErrorCode.NO_HASHSET));
+            return;
+        }
+
+        verifying = true;
+        verifyProgress = 0;
+        disconnectAll(ErrorCode.TRANSFER_VERIFYING);
+        setState(TransferStatus.TransferState.VERIFYING);
+        log.info("{} verification started, {} pieces", hash, numPieces);
+        session.submitDiskTask(new AsyncVerify(this, new ArrayList<Hash>(hashSet), size));
+    }
+
+    /**
+     * apply the verification result: the picker is rebuilt from what is really on disk
+     * @param goodPieces bit per piece, set when the piece matched its hash
+     * @param buffers buffers freed by the disk thread, returned to the pool
+     * @param ec NO_ERROR, or why the file could not be checked (state is left untouched)
+     */
+    public void setVerifyProgress(int done, int total) {
+        verifyProgress = (total > 0) ? (int) (done * 100L / total) : 0;
+    }
+
+    public int getVerifyProgress() {
+        return verifyProgress;
+    }
+
+    /**
+     * the file was moved on disk: follow it. Only meaningful once the transfer released
+     * the file (finished), which is exactly when the Android side moves it.
+     */
+    void retargetFile(final File target) {
+        if (target == null || pm == null) return;
+        log.info("{} file retargeted to {}", hash, target);
+        pm.retarget(target);
+    }
+
+    public void onVerifyCompleted(final BitField goodPieces, final List<ByteBuffer> buffers, final BaseErrorCode ec) {
+        if (buffers != null) {
+            for (ByteBuffer buffer : buffers) {
+                session.getBufferPool().deallocate(buffer, Time.currentTime());
+            }
+        }
+
+        verifying = false;
+        boolean wasFinished = isFinished();
+
+        if (ec != ErrorCode.NO_ERROR) {
+            log.error("{} verification failed: {}", hash, ec.getDescription());
+            setState(wasFinished ? TransferStatus.TransferState.FINISHED : TransferStatus.TransferState.DOWNLOADING);
+            session.pushAlert(new TransferVerifiedAlert(hash, 0, numPieces, ec));
+            return;
+        }
+
+        int ok = 0;
+        for (int i = 0; i < numPieces; ++i) {
+            boolean good = goodPieces.getBit(i);
+            if (good) ++ok;
+            picker.resetPiece(i, good);
+        }
+
+        needSaveResumeData = true;
+        log.info("{} verification completed: {} of {} pieces are good", hash, ok, numPieces);
+
+        if (isFinished()) {
+            if (!wasFinished) {
+                finished();
+            } else {
+                setState(TransferStatus.TransferState.FINISHED);
+            }
+        } else {
+            // damaged or missing pieces go back to the network: ask for sources right away
+            setState(TransferStatus.TransferState.DOWNLOADING);
+            nextTimeForSourcesRequest = 0;
+            nextTimeForDhtSourcesRequest = 0;
+        }
+
+        session.pushAlert(new TransferVerifiedAlert(hash, ok, numPieces, ErrorCode.NO_ERROR));
+    }
+
+    /**
      * Same check PeerConnection.onClientHashSetAnswer() runs before trusting a hash set
      * from a peer: it must have one hash per piece and hash down to this transfer's file
      * hash.
@@ -416,9 +640,11 @@ public class Transfer {
         // policy will know transfer is finished automatically via call isFinished on transfer
         // async release file
         setState(TransferStatus.TransferState.FINISHED);
+        // the finished alert is raised from onReleaseFile(), once the file is closed:
+        // anything acting on the alert (moving or scanning the file) must not race the
+        // disk thread that still owns it
         session.submitDiskTask(new AsyncRelease(this, false));
         needSaveResumeData = true;
-        session.pushAlert(new TransferFinishedAlert(getHash()));
     }
 
     public void onBlockWriteCompleted(final PieceBlock b, final List<ByteBuffer> buffers, final BaseErrorCode ec) {
@@ -513,6 +739,12 @@ public class Transfer {
         }
 
         log.debug("buffers status: {}", session.getBufferPool().toString());
+
+        // file released because the transfer completed (not aborted/removed): now it is
+        // safe for listeners to touch the file on disk
+        if (!deleteFile && !abort && isFinished()) {
+            session.pushAlert(new TransferFinishedAlert(getHash()));
+        }
     }
 
     /**
@@ -589,6 +821,8 @@ public class Transfer {
         TransferStatus status = new TransferStatus();
         getBytesDone(status);
 
+        status.state = state;
+        status.verifyProgress = verifying ? verifyProgress : 0;
         status.paused = isPaused();
         status.downloadPayload = stat.totalPayloadDownload();
         status.downloadProtocol = stat.totalProtocolDownload();

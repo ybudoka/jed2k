@@ -6,6 +6,8 @@ import org.dkf.jed2k.Constants;
 import org.dkf.jed2k.data.PieceBlock;
 import org.dkf.jed2k.exception.ErrorCode;
 import org.dkf.jed2k.exception.JED2KException;
+import org.dkf.jed2k.hash.MD4;
+import org.dkf.jed2k.protocol.BitField;
 import org.dkf.jed2k.protocol.Hash;
 import org.slf4j.Logger;
 
@@ -121,6 +123,73 @@ public class PieceManager extends BlocksEnumerator {
         return res;
     }
 
+    /**
+     * hash every piece of the file on disk and compare with the expected hashes
+     * pieces beyond the end of the file (file shorter than the transfer size) count as
+     * missing; nothing is written
+     * @param hashes expected piece hashes, one per piece
+     * @param fileSize size of the complete file
+     * @return bit per piece, set when the piece on disk matches its hash
+     * @throws JED2KException when the file cannot be read
+     */
+    /**
+     * progress of verifyPieces(), one call per piece checked
+     */
+    public interface VerifyProgress {
+        void onPieceChecked(int done, int total);
+    }
+
+    public BitField verifyPieces(final List<Hash> hashes, long fileSize) throws JED2KException {
+        return verifyPieces(hashes, fileSize, null);
+    }
+
+    public BitField verifyPieces(final List<Hash> hashes, long fileSize, final VerifyProgress progress) throws JED2KException {
+        BitField res = new BitField(hashes.size());
+        ByteBuffer buffer = ByteBuffer.allocate(Constants.BLOCK_SIZE_INT);
+        FileChannel c = handler.getReadChannel();
+
+        try {
+            long available = c.size();
+            for (int piece = 0; piece < hashes.size(); ++piece) {
+                long begin = piece * Constants.PIECE_SIZE;
+                long end = Math.min(begin + Constants.PIECE_SIZE, fileSize);
+                if (end > available) {
+                    log.warn("piece {} lies beyond the end of the file ({} of {} bytes on disk)", piece, available, fileSize);
+                    continue;
+                }
+
+                MD4 hasher = new MD4();
+                c.position(begin);
+                long left = end - begin;
+                while (left > 0) {
+                    buffer.clear();
+                    buffer.limit((int) Math.min(buffer.capacity(), left));
+                    while (buffer.hasRemaining()) {
+                        if (c.read(buffer) < 0) throw new JED2KException(ErrorCode.END_OF_STREAM);
+                    }
+                    buffer.flip();
+                    left -= buffer.remaining();
+                    hasher.update(buffer);
+                }
+
+                Hash actual = Hash.fromBytes(hasher.digest());
+                if (actual.equals(hashes.get(piece))) {
+                    res.setBit(piece);
+                } else {
+                    log.warn("piece {} on disk hashes to {} expected {}", piece, actual, hashes.get(piece));
+                }
+
+                if (progress != null) progress.onPieceChecked(piece + 1, hashes.size());
+            }
+        } catch(IOException e) {
+            log.error("i/o error on verify {}", e.toString());
+            handler.closeChannels();
+            throw new JED2KException(ErrorCode.IO_EXCEPTION);
+        }
+
+        return res;
+    }
+
     public Hash hashPiece(int pieceIndex) {
         BlockManager mgr = getBlockManager(pieceIndex);
         assert(mgr != null);
@@ -168,5 +237,13 @@ public class PieceManager extends BlocksEnumerator {
 
     public final File getFile() {
         return handler.getFile();
+    }
+
+    /**
+     * the file was moved on disk (finished download taken out of its incomplete folder):
+     * follow it, so verify and repair keeps working on the transfer
+     */
+    public void retarget(final File target) {
+        handler.retarget(target);
     }
 }

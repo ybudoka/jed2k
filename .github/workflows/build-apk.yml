@@ -1,0 +1,91 @@
+name: Build debug APK
+
+# Produces a downloadable APK as a workflow artifact.
+#
+# Run it from the Actions tab ("Build debug APK" -> "Run workflow"), or let it run
+# automatically on a push to this branch. When it finishes, the APK is attached to
+# the run under "Artifacts".
+#
+# It builds the *debug* variant on purpose. The release variant in
+# android/jdonkey/build.gradle points its signing config at a hardcoded keystore
+# (/home/inkpot/dev/jdonkey.keystore) and prompts for the password through a Swing
+# dialog or the console, neither of which exists on a CI runner. Debug is signed
+# with the auto-generated debug key, which is fine for installing and testing but
+# not for distribution.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - claude/bugs-visual-improvements-62s462
+      - claude/ecstatic-thompson-q2u86m
+  # the Android module cannot be compiled outside a full SDK, so a pull request is
+  # where its build gets checked
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Action versions are majors that run on Node 24. The runner forces Node 20
+      # actions onto Node 24 already and warns about it on every run; these are the
+      # versions that do not need forcing.
+      - name: Check out
+        uses: actions/checkout@v5
+
+      # Two JDKs are needed, and the order matters. Current Android command-line
+      # tools refuse to run on anything below JDK 17 ("This tool requires JDK 17 or
+      # later"), while the Android Gradle Plugin pinned in
+      # android/jdonkey/build.gradle is 7.2.2, which runs on JDK 11 and is not
+      # supported on newer JDKs. So: install 17, set the SDK up with it, then drop
+      # back to 11 for the build itself. setup-java sets JAVA_HOME, last call wins.
+      - name: Set up JDK 17 (for sdkmanager)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # compileSdkVersion 33 and buildToolsVersion "31.0.0" from the module build file.
+      # The runner image ships some SDK packages already, but not necessarily these.
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platforms;android-33 build-tools;31.0.0 platform-tools'
+
+      - name: Switch to JDK 11 (for AGP 7.2.2)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      # There is no Gradle wrapper committed, so the version has to be pinned here.
+      # AGP 7.2.2 needs Gradle 7.3.3 or newer and does not work on Gradle 8:
+      # console/build.gradle uses `classifier =`, removed in Gradle 8.
+      - name: Set up Gradle 7
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '7.6.4'
+
+      # --warning-mode all names each deprecation instead of collapsing them into
+      # "Deprecated Gradle features were used in this build". A summary line cannot be
+      # acted on; a named one can, which is the only way this stays warning-free.
+      - name: Assemble debug APK
+        run: gradle :android:jdonkey:assembleBasicDebug --no-daemon --stacktrace --warning-mode all
+
+      - name: Show what was produced
+        if: always()
+        run: find android/jdonkey/build -name '*.apk' -print -exec ls -lh {} \; || true
+
+      # Just the copy that changeApkOutput() drops at the root of the module's build
+      # directory. Globbing **/*.apk also picked up the original under
+      # build/outputs/apk/basic/debug/, so the archive held the same APK twice and it
+      # was not obvious which one to install.
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: jed2k-android-debug-apk
+          path: android/jdonkey/build/*.apk
+          if-no-files-found: error

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Log screen.
+
+  The log itself is a monospace TextView inside a vertical scroller wrapped in a
+  horizontal one: log lines are long and wrapping them makes columns impossible to
+  follow, so they scroll sideways instead. The TextView is selectable so a single
+  interesting line can be picked out without copying the whole buffer.
+
+  Colours come from the app_* aliases, which the dark palette overrides, so this
+  screen follows the theme like every other one.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="vertical"
+              android:background="@color/app_background_white">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingLeft="12dp"
+        android:paddingRight="12dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:background="@color/app_light_background">
+
+        <TextView
+            android:id="@+id/activity_logs_status"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="@dimen/text_x_small"
+            android:textColor="@color/app_text_secondary"/>
+
+        <CheckBox
+            android:id="@+id/activity_logs_verbose"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/logs_verbose"
+            android:textSize="@dimen/text_x_small"
+            android:textColor="@color/app_text_primary"/>
+
+    </LinearLayout>
+
+    <HorizontalScrollView
+        android:id="@+id/activity_logs_hscroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <ScrollView
+            android:id="@+id/activity_logs_scroll"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:fillViewport="true">
+
+            <TextView
+                android:id="@+id/activity_logs_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="8dp"
+                android:typeface="monospace"
+                android:textSize="@dimen/logs_text"
+                android:textIsSelectable="true"
+                android:textColor="@color/app_text_primary"/>
+
+        </ScrollView>
+
+    </HorizontalScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@color/app_light_background">
+
+        <Button
+            android:id="@+id/activity_logs_button_refresh"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="@dimen/text_x_small"
+            android:text="@string/logs_refresh"/>
+
+        <Button
+            android:id="@+id/activity_logs_button_copy"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="@dimen/text_x_small"
+            android:text="@string/logs_copy"/>
+
+        <Button
+            android:id="@+id/activity_logs_button_share"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="@dimen/text_x_small"
+            android:text="@string/logs_share"/>
+
+        <Button
+            android:id="@+id/activity_logs_button_clear"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="@dimen/text_x_small"
+            android:text="@string/logs_clear"/>
+
+    </LinearLayout>
+
+</LinearLayout>
