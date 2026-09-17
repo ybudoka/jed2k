@@ -17,6 +17,7 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - master
       - claude/bugs-visual-improvements-62s462
       - claude/ecstatic-thompson-q2u86m
   # the Android module cannot be compiled outside a full SDK, so a pull request is
@@ -28,6 +29,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    # the release step at the end writes a tag and a release
+    permissions:
+      contents: write
 
     steps:
       # Action versions are majors that run on Node 24. The runner forces Node 20
@@ -89,3 +94,28 @@ jobs:
           name: jed2k-android-debug-apk
           path: android/jdonkey/build/*.apk
           if-no-files-found: error
+
+      # A workflow artifact is a zip behind a login and a script-driven link, which is
+      # close to unusable on a phone. A release asset is a plain file at a fixed URL,
+      # so one link always serves the newest build and a tap downloads it:
+      #
+      #   https://github.com/ybudoka/jed2k/releases/download/debug-latest/jed2k-debug.apk
+      #
+      # The tag is rolling - deleted and recreated on the commit just built - so it
+      # always points at the code inside the APK. Only for master and for manual runs:
+      # a pull request must not move the channel out from under the branch.
+      - name: Publish the APK as the rolling debug release
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          apk=$(find android/jdonkey/build -maxdepth 1 -name '*.apk' | head -n 1)
+          if [ -z "$apk" ]; then
+            echo "no APK at the root of the module build directory" >&2
+            exit 1
+          fi
+          # A fixed asset name is what keeps the download URL stable across builds.
+          cp "$apk" jed2k-debug.apk
+          gh release delete debug-latest --yes --cleanup-tag || true
+          gh release create debug-latest jed2k-debug.apk --prerelease --target "$GITHUB_SHA" --title "Debug build (latest)" --notes "Debug APK built from $GITHUB_SHA. Signed with the debug key, so it installs alongside the official app, and replaced on every build of master."
