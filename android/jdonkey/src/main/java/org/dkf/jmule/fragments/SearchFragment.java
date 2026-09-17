@@ -65,6 +65,8 @@ public final class SearchFragment extends AbstractFragment implements
     private RichNotification serverConnectionWarning;
     private RichNotification safeModeInfo;
     private SearchParametersView searchParametersView;
+    private SearchFiltersView searchFilters;
+    private View filtersEmptyClear;
     private SearchProgressView searchProgress;
     ButtonSearchParametersListener buttonSearchParametersListener;
     private ListView list;
@@ -159,6 +161,7 @@ public final class SearchFragment extends AbstractFragment implements
 
         if (adapter != null && (adapter.getCount() > 0 || adapter.getTotalCount() > 0)) {
             refreshFileTypeCounters(true);
+            refreshFiltersBar();
         }
 
         searchParametersView.showSearchSourceChooser(!Engine.instance().getCurrentServerId().isEmpty() && Engine.instance().isDhtEnabled());
@@ -201,6 +204,42 @@ public final class SearchFragment extends AbstractFragment implements
 
         searchParametersView = findView(view, R.id.fragment_search_parameters);
         searchParametersView.setVisibility(View.GONE);
+
+        searchFilters = findView(view, R.id.fragment_search_filters);
+        searchFilters.setVisibility(View.GONE);
+        searchFilters.setOnFiltersChangedListener(new SearchFiltersView.OnFiltersChangedListener() {
+            @Override
+            public void onFiltersChanged(SearchFiltersView v) {
+                applyQuickFilters();
+            }
+        });
+
+        // A rotation rebuilds the bar but not the fragment, and the adapter is still
+        // holding the filters the user chose - so the chips are set from it rather than
+        // coming up blank over a list that is still narrowed.
+        if (adapter != null) {
+            searchFilters.setState(adapter.isCompleteOnly()
+                    , adapter.getMinCompletePercent()
+                    , adapter.getMinSources()
+                    , adapter.getSortMode());
+        }
+
+        searchFilters.setOnMoreResultsClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                performSearchMore();
+            }
+        });
+
+        // the way back out of a filter that matched nothing, offered where the results
+        // would have been
+        filtersEmptyClear = findView(view, R.id.fragment_search_filters_empty_clear);
+        filtersEmptyClear.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                searchFilters.reset();
+            }
+        });
 
         searchProgress = findView(view, R.id.fragment_search_search_progress);
         searchProgress.setCurrentQueryReporter(this);
@@ -260,6 +299,9 @@ public final class SearchFragment extends AbstractFragment implements
             };
         }
         list.setAdapter(adapter);
+        // first run: push the bar's starting state into a brand new adapter, and put
+        // the counter and the empty state in agreement with the results it holds
+        applyQuickFilters();
     }
 
     private void refreshFileTypeCounters(boolean fileTypeCountersVisible) {
@@ -291,6 +333,8 @@ public final class SearchFragment extends AbstractFragment implements
                     adapter.clear();
                     fileTypeCounter.clear();
                     refreshFileTypeCounters(false);
+                    // nothing to filter until the answers come back
+                    refreshFiltersBar();
                     currentQuery = query;
                     boolean progressEnabled = false;
                     Engine.instance().performSearch(
@@ -317,6 +361,8 @@ public final class SearchFragment extends AbstractFragment implements
                     adapter.clear();
                     fileTypeCounter.clear();
                     refreshFileTypeCounters(false);
+                    // nothing to filter until the answers come back
+                    refreshFiltersBar();
                     currentQuery = query;
                     // takes first item in search expression for DHT search
                     Engine.instance().performSearchDhtKeyword(expression.split("\\s+")[0]
@@ -415,6 +461,7 @@ public final class SearchFragment extends AbstractFragment implements
             adapter.clear();
             fileTypeCounter.clear();
             refreshFileTypeCounters(false);
+            refreshFiltersBar();
             currentQuery = null;
             searchProgress.setProgressEnabled(false);
             showSearchView(getView());
@@ -439,13 +486,65 @@ public final class SearchFragment extends AbstractFragment implements
         adapter.setFileType(ConfigurationManager.instance().getLastMediaTypeFilter());
 
         refreshFileTypeCounters(true);
+        refreshFiltersBar();
         searchProgress.setProgressEnabled(false);
         showSearchView(getView());
+    }
+
+    /**
+     * Hands the quick filter bar's state to the adapter and redraws.
+     * <p>
+     * Nothing here goes near the network: the chips narrow the hits already received,
+     * so a filter is applied in the time it takes to redraw a list and dropping one
+     * brings every hit straight back. That is what makes them safe to try.
+     */
+    private void applyQuickFilters() {
+        if (adapter == null || searchFilters == null) {
+            return;
+        }
+
+        adapter.applyFilters(searchFilters.isCompleteOnly()
+                , searchFilters.getMinCompletePercent()
+                , searchFilters.getMinSources()
+                , searchFilters.getSortMode());
+
+        refreshFiltersBar();
+        showSearchView(getView());
+    }
+
+    /**
+     * Shows the filter bar once there is something to filter, and keeps its counter
+     * honest: how many hits survived the chips out of how many the search brought in.
+     */
+    private void refreshFiltersBar() {
+        if (adapter == null || searchFilters == null) {
+            return;
+        }
+
+        final int total = adapter.getTotalCount();
+        searchFilters.setVisibility((total > 0) ? View.VISIBLE : View.GONE);
+        searchFilters.updateSummary(adapter.getCount(), total);
+        // only when the server said it truncated the answer, and only while it can
+        // still be asked - the request needs a connected server
+        searchFilters.setMoreResultsAvailable(adapter.hasMoreResults()
+                && !Engine.instance().getCurrentServerId().isEmpty());
     }
 
     private void showSearchView(View view) {
         if (awaitingResults) {
             switchView(view, R.id.fragment_search_search_progress);
+        } else if (adapter != null && adapter.getCount() == 0 && adapter.getTotalCount() > 0) {
+            // Results came back and nothing survived the narrowing - the quick filters,
+            // or a file type tab with no hits of its own. A blank list here looks
+            // exactly like a search that found nothing, which it is not.
+            //
+            // The way out is only offered when there is one to offer: clearing the chips
+            // does nothing for an empty file type tab, and a button that visibly does
+            // nothing is worse than no button.
+            if (filtersEmptyClear != null && searchFilters != null) {
+                filtersEmptyClear.setVisibility(searchFilters.hasActiveFilters() ? View.VISIBLE : View.GONE);
+            }
+            switchView(view, R.id.fragment_search_filters_empty);
         } else {
             switchView(view, R.id.fragment_search_list);
         }
@@ -628,6 +727,7 @@ public final class SearchFragment extends AbstractFragment implements
 
         public void onMediaTypeSelected(View view, int mediaTypeId) {
             fragment.adapter.setFileType(mediaTypeId);
+            fragment.refreshFiltersBar();
             fragment.showSearchView(parentView);
         }
 

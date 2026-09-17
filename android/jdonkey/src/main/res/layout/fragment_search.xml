@@ -43,6 +43,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
 
+    <!--
+      Quick filters. Hidden until there is something to filter - an empty bar over an
+      empty screen is just clutter, and it would sit between the search box and the
+      keyboard on first run.
+    -->
+    <org.dkf.jmule.views.SearchFiltersView
+            android:id="@+id/fragment_search_filters"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/app_page_background"
+            android:visibility="gone"/>
+
     <org.dkf.jmule.views.RichNotification
             android:id="@+id/fragment_search_rating_reminder_notification"
             frostwire:rich_notification_icon="@null"
@@ -104,6 +116,46 @@
                     android:paddingBottom="@dimen/card_gap"
                     android:scrollbarStyle="outsideOverlay"
                     android:fastScrollEnabled="true"/>
+
+            <!--
+              Shown in place of the list when the filters have hidden every hit. The
+              results are still there, which is exactly what is not obvious from a blank
+              screen - so say so, and put the way out one tap away.
+            -->
+            <LinearLayout
+                    android:id="@+id/fragment_search_filters_empty"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@color/app_page_background"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:padding="24dp"
+                    android:visibility="invisible">
+
+                <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="@string/search_filter_none_match"
+                        android:textColor="@color/app_text_primary"
+                        android:textSize="@dimen/text_medium"/>
+
+                <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center"
+                        android:text="@string/search_filter_none_match_hint"
+                        android:textColor="@color/app_text_secondary"
+                        android:textSize="@dimen/text_x_small"/>
+
+                <TextView
+                        android:id="@+id/fragment_search_filters_empty_clear"
+                        style="@style/SearchFilterChip"
+                        android:layout_marginTop="20dp"
+                        android:text="@string/search_filter_clear"/>
+
+            </LinearLayout>
         </FrameLayout>
     </org.dkf.jmule.views.SwipeLayout>
 

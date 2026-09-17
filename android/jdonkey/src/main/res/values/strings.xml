@@ -337,4 +337,19 @@
     <string name="search_more_none">The server returned everything it had for this search</string>
     <string name="search_more_no_server">Not connected to a server</string>
     <string name="search_no_answer">The server did not answer</string>
+
+    <!-- quick filters -->
+    <string name="search_filter_complete">Complete</string>
+    <string name="search_filter_half" formatted="false">50%+ complete</string>
+    <string name="search_filter_sources">%1$d+ sources</string>
+    <string name="search_filter_sort_sources">Sort: sources</string>
+    <string name="search_filter_sort_size">Sort: size</string>
+    <string name="search_filter_sort_name">Sort: name</string>
+    <string name="search_filter_summary">%1$d of %2$d results</string>
+    <string name="search_filter_summary_all">%1$d results</string>
+    <string name="search_filter_clear">Clear</string>
+    <string name="search_filter_more">More results</string>
+    <string name="search_filter_none_match">No result matches these filters</string>
+    <string name="search_filter_none_match_hint">Loosen them and the hits already downloaded from the server come straight back - nothing is searched again.</string>
+    <string name="search_item_complete_percent" formatted="false">%1$d%% complete</string>
 </resources>

@@ -146,7 +146,7 @@
                     android:layout_marginStart="10dp"
                     android:layout_weight="1"
                     android:ellipsize="end"
-                    tools:text="@string/complete_sources" />
+                    tools:text="@string/search_item_complete_percent" />
             </LinearLayout>
 
         </LinearLayout>

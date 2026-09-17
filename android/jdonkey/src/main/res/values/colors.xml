@@ -173,6 +173,28 @@
     <color name="frostwire_orange">#ffe9a54c</color>
     <color name="frostwire_gray_explanation_text">#ffb3bcc4</color>
     <color name="frostwire_gray_explanation_text_dark">#ff7c8892</color>
+
+    <!--
+      Quick search filters.
+
+      A chip is a button that carries its own state: off it is a card-coloured pill with
+      a hairline, on it is filled with the accent. The two have to be told apart at a
+      glance and from a distance, which a tint alone does not do - hence a full fill and
+      an inverted label rather than a coloured border.
+    -->
+    <color name="app_chip_background">@color/app_card_background</color>
+    <color name="app_chip_stroke">@color/app_card_stroke</color>
+    <color name="app_chip_pressed">@color/app_card_pressed</color>
+    <color name="app_chip_selected">@color/basic_blue_highlight_dark</color>
+    <color name="app_chip_selected_pressed">@color/basic_blue_darker_highlight</color>
+    <color name="app_chip_text">@color/app_text_secondary</color>
+    <!-- label on a filled chip: white over the light theme's deep accent -->
+    <color name="app_chip_text_selected">@color/basic_white</color>
+
+    <!-- availability of a search hit, read off its share of complete sources -->
+    <color name="app_text_complete_high">@color/basic_green_dark</color>
+    <color name="app_text_complete_low">@color/app_text_secondary_dark</color>
+
     <!-- The action bar title color -->
     <color name="action_bar_title">@color/white</color>
 </resources>

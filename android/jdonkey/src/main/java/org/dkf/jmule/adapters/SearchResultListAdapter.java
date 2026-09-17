@@ -43,6 +43,7 @@ import org.dkf.jmule.views.AbstractListAdapter;
 import org.dkf.jmule.views.ClickAdapter;
 import org.dkf.jmule.views.MenuAction;
 import org.dkf.jmule.views.MenuAdapter;
+import org.dkf.jmule.views.SearchFiltersView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +52,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -67,9 +70,29 @@ public abstract class SearchResultListAdapter extends AbstractListAdapter<Search
     private final PreviewClickListener previewClickListener;
     private boolean moreResults = false;
     private final Set<Hash> seenHashes = new HashSet<>();
-    private Comparator<SearchEntry> sourcesCountComparator = new SourcesCountComparator();
+
+    /**
+     * What the file name says about a hit, worked out once.
+     * <p>
+     * The extension and its media type used to be recomputed from the file name on
+     * every filter pass <em>and</em> on every single row bind - and the media type
+     * lookup is a linear walk over nine tables of extensions. With a full result set
+     * that is thousands of lookups per scroll fling and per chip tap, all of them
+     * answering the same question about the same unchanging string. The answer is
+     * cached the moment a result is accepted instead.
+     * <p>
+     * Keyed by identity: two distinct hits can carry the same name, and one hit is
+     * exactly one row.
+     */
+    private final Map<SearchEntry, EntryMeta> metaCache = new IdentityHashMap<>();
 
     private int fileType;
+
+    /** Quick filters - see {@link SearchFiltersView}. All of them are local. */
+    private boolean completeOnly = false;
+    private int minCompletePercent = 0;
+    private int minSources = 0;
+    private int sortMode = SearchFiltersView.SORT_BY_SOURCES;
 
     protected SearchResultListAdapter(Context context) {
         super(context, R.layout.view_bittorrent_search_result_list_item);
@@ -88,6 +111,49 @@ public abstract class SearchResultListAdapter extends AbstractListAdapter<Search
     }
 
     /**
+     * Applies the quick filter bar in one go.
+     * <p>
+     * One call rather than a setter per chip: each one re-filters the whole result set,
+     * and doing that four times to answer a single tap is three redraws of a list the
+     * user is looking at.
+     *
+     * @param completeOnly        keep only hits with at least one complete source
+     * @param minCompletePercent  minimum share of complete sources, 0 to ignore
+     * @param minSources          minimum number of sources, 0 to ignore
+     * @param sortMode            one of the SORT_BY_* constants
+     */
+    public void applyFilters(boolean completeOnly, int minCompletePercent, int minSources, int sortMode) {
+        boolean orderChanged = this.sortMode != sortMode;
+
+        this.completeOnly = completeOnly;
+        this.minCompletePercent = minCompletePercent;
+        this.minSources = minSources;
+        this.sortMode = sortMode;
+
+        if (orderChanged) {
+            sort();
+        }
+
+        filter();
+    }
+
+    public boolean isCompleteOnly() {
+        return completeOnly;
+    }
+
+    public int getMinCompletePercent() {
+        return minCompletePercent;
+    }
+
+    public int getMinSources() {
+        return minSources;
+    }
+
+    public int getSortMode() {
+        return sortMode;
+    }
+
+    /**
      * Appends a page of results.
      * <p>
      * Servers happily repeat hits between the first page and the "more results" pages,
@@ -102,6 +168,7 @@ public abstract class SearchResultListAdapter extends AbstractListAdapter<Search
         final List<SearchEntry> added = new ArrayList<>(entries.size());
         for (SearchEntry e : entries) {
             if (e != null && seenHashes.add(e.getHash())) {
+                metaCache.put(e, new EntryMeta(e));
                 added.add(e);
             }
         }
@@ -111,7 +178,7 @@ public abstract class SearchResultListAdapter extends AbstractListAdapter<Search
         }
 
         list.addAll(added);
-        Collections.sort(list, Collections.reverseOrder(sourcesCountComparator));
+        sort();
         // visualList used to be fed with addAll(list). When no media filter is active
         // visualList *is* list, so every batch of results doubled the backing list and
         // the user saw each hit twice, then four times, then eight...
@@ -132,6 +199,7 @@ public abstract class SearchResultListAdapter extends AbstractListAdapter<Search
     public void clear() {
         moreResults = false;
         seenHashes.clear();
+        metaCache.clear();
         super.clear();
     }
 
@@ -146,11 +214,14 @@ public abstract class SearchResultListAdapter extends AbstractListAdapter<Search
         if (visualList != list) {
             visualList.remove(searchEntry);
         }
+        metaCache.remove(searchEntry);
         log.info("item blocked {}", removed);
         notifyDataSetChanged();
     }
 
     private void populateFilePart(View view, final SearchEntry entry) {
+        final EntryMeta meta = metaOf(entry);
+
         TextView adIndicator = findView(view, R.id.view_bittorrent_search_result_list_item_ad_indicator);
         adIndicator.setVisibility(View.GONE);
 
@@ -170,15 +241,19 @@ public abstract class SearchResultListAdapter extends AbstractListAdapter<Search
         }
 
         TextView extra = findView(view, R.id.view_bittorrent_search_result_list_item_text_extra);
-        extra.setText(FilenameUtils.getExtension(entry.getFileName()));
+        extra.setText(meta.extension);
 
         TextView seeds = findView(view, R.id.view_bittorrent_search_result_list_item_text_seeds);
         seeds.setText(view.getContext().getString(R.string.search_item_sources, entry.getSources()));
+
+        // Availability is the number that decides whether a download finishes, so it is
+        // the one thing on the row that is allowed a colour: green once half the sources
+        // hold the whole file, plain grey below that. It used to read "Complete 42%",
+        // which parses as a status rather than as a share of the sources.
         TextView completeSources = findView(view, R.id.view_bittorrent_search_result_list_item_text_comp_percent);
-        int completePercent = (entry.getSources() != 0)
-                ? (int) (entry.getCompleteSources() * 100L / entry.getSources())
-                : 0;
-        completeSources.setText(view.getContext().getString(R.string.complete_sources, completePercent) + "%");
+        completeSources.setText(view.getContext().getString(R.string.search_item_complete_percent, meta.completePercent));
+        completeSources.setTextColor(ContextCompat.getColor(view.getContext(),
+                (meta.completePercent >= 50) ? R.color.app_text_complete_high : R.color.app_text_complete_low));
 
         TextView sourceLink = findView(view, R.id.view_bittorrent_search_result_list_item_text_source);
 
@@ -223,11 +298,7 @@ public abstract class SearchResultListAdapter extends AbstractListAdapter<Search
     public List<SearchEntry> filter(List<SearchEntry> results) {
         ArrayList<SearchEntry> l = new ArrayList<>();
         for (SearchEntry se : results) {
-            MediaType mt;
-            String extension = FilenameUtils.getExtension(se.getFileName());
-            mt = MediaType.getMediaTypeForExtension(extension);
-
-            if (accept(se, mt)) {
+            if (accept(se, metaOf(se))) {
                 l.add(se);
             }
         }
@@ -235,32 +306,60 @@ public abstract class SearchResultListAdapter extends AbstractListAdapter<Search
         return l;
     }
 
-    private boolean accept(SearchEntry se, MediaType mt) {
-        // no media filter chosen yet -> show everything instead of an empty list
-        if (fileType == NO_FILE_TYPE) {
-            return true;
+    private boolean accept(SearchEntry se, EntryMeta meta) {
+        if (fileType != NO_FILE_TYPE) {
+            // An extension nothing recognises maps to MediaType.TYPE_UNKNOWN, and that
+            // is what the "others" tab is for. The test used to be written against a
+            // null media type, which getMediaTypeForExtension never returns, so the
+            // tab counted its hits in the header and then showed an empty list.
+            final boolean typeMatches = meta.mediaTypeId == fileType
+                    || (meta.mediaTypeId == Constants.FILE_TYPE_UNKNOWN && fileType == Constants.FILE_TYPE_OTHERS);
+            if (!typeMatches) {
+                return false;
+            }
         }
-        return (mt != null && mt.getId() == fileType) ||
-                (mt == null && fileType == Constants.FILE_TYPE_OTHERS);
+
+        if (minSources > 0 && se.getSources() < minSources) {
+            return false;
+        }
+
+        if (completeOnly && se.getCompleteSources() < 1) {
+            return false;
+        }
+
+        if (minCompletePercent > 0 && meta.completePercent < minCompletePercent) {
+            return false;
+        }
+
+        return true;
     }
 
-    private int getFileTypeIconId() {
-        switch (fileType) {
-            case Constants.FILE_TYPE_APPLICATIONS:
-                return R.drawable.list_item_application_icon;
-            case Constants.FILE_TYPE_AUDIO:
-                return R.drawable.list_item_audio_icon;
-            case Constants.FILE_TYPE_DOCUMENTS:
-                return R.drawable.list_item_document_icon;
-            case Constants.FILE_TYPE_PICTURES:
-                return R.drawable.list_item_picture_icon;
-            case Constants.FILE_TYPE_VIDEOS:
-                return R.drawable.list_item_video_icon;
-            case Constants.FILE_TYPE_TORRENTS:
-                return R.drawable.list_item_torrent_icon;
+    private void sort() {
+        final Comparator<SearchEntry> comparator;
+        switch (sortMode) {
+            case SearchFiltersView.SORT_BY_SIZE:
+                comparator = SIZE_DESC;
+                break;
+            case SearchFiltersView.SORT_BY_NAME:
+                comparator = NAME_ASC;
+                break;
             default:
-                return R.drawable.list_item_question_mark;
+                comparator = SOURCES_DESC;
+                break;
         }
+
+        Collections.sort(list, comparator);
+    }
+
+    private EntryMeta metaOf(SearchEntry entry) {
+        EntryMeta meta = metaCache.get(entry);
+        if (meta == null) {
+            // Only reachable for an entry that arrived by some path other than
+            // addResults; cache it too rather than recomputing it on every bind.
+            meta = new EntryMeta(entry);
+            metaCache.put(entry, meta);
+        }
+        return meta;
     }
 
     private static class OnLinkClickListener implements OnClickListener {
@@ -331,14 +430,51 @@ public abstract class SearchResultListAdapter extends AbstractListAdapter<Search
         return items.size() > 0 ? new MenuAdapter(view.getContext(), title, items) : null;
     }
 
-    private static final class SourcesCountComparator implements Comparator<SearchEntry> {
-        public int compare(final SearchEntry lhs, SearchEntry rhs) {
-            try {
-                return Integer.signum(lhs.getSources() - rhs.getSources());
-            } catch (Exception e) {
-                // ignore, not really super important
-            }
-            return 0;
+    /** Everything about a hit that is derived from its file name or its counters. */
+    private static final class EntryMeta {
+        final String extension;
+        final int mediaTypeId;
+        final int completePercent;
+
+        EntryMeta(SearchEntry entry) {
+            final String name = entry.getFileName();
+            this.extension = (name != null) ? FilenameUtils.getExtension(name) : "";
+
+            final MediaType mt = MediaType.getMediaTypeForExtension(this.extension);
+            this.mediaTypeId = (mt != null) ? mt.getId() : Constants.FILE_TYPE_UNKNOWN;
+
+            this.completePercent = (entry.getSources() != 0)
+                    ? (int) (entry.getCompleteSources() * 100L / entry.getSources())
+                    : 0;
         }
+    }
+
+    private static final Comparator<SearchEntry> SOURCES_DESC = new Comparator<SearchEntry>() {
+        @Override
+        public int compare(final SearchEntry lhs, final SearchEntry rhs) {
+            // compare rather than subtract: two counts far enough apart overflow an int
+            final int bySources = Integer.compare(rhs.getSources(), lhs.getSources());
+            return (bySources != 0) ? bySources : nameOf(lhs).compareToIgnoreCase(nameOf(rhs));
+        }
+    };
+
+    private static final Comparator<SearchEntry> SIZE_DESC = new Comparator<SearchEntry>() {
+        @Override
+        public int compare(final SearchEntry lhs, final SearchEntry rhs) {
+            final int bySize = Long.compare(rhs.getFileSize(), lhs.getFileSize());
+            return (bySize != 0) ? bySize : nameOf(lhs).compareToIgnoreCase(nameOf(rhs));
+        }
+    };
+
+    private static final Comparator<SearchEntry> NAME_ASC = new Comparator<SearchEntry>() {
+        @Override
+        public int compare(final SearchEntry lhs, final SearchEntry rhs) {
+            return nameOf(lhs).compareToIgnoreCase(nameOf(rhs));
+        }
+    };
+
+    private static String nameOf(final SearchEntry entry) {
+        final String name = entry.getFileName();
+        return (name != null) ? name : "";
     }
 }

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A quick-filter chip.
+
+  Off, it is a pill the colour of a card with a hairline around it - visibly a button,
+  visibly not pressed. On, it is filled with the accent and its label inverts. A tinted
+  outline was the first try and it failed the only test that matters here: whether you
+  can tell from across a room which filters are active.
+
+  Order matters, the first matching item wins: pressed before selected, so a chip that
+  is already on still reacts to a tap.
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item android:state_selected="true" android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/app_chip_selected_pressed" />
+            <corners android:radius="20dp" />
+        </shape>
+    </item>
+
+    <item android:state_selected="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/app_chip_selected" />
+            <corners android:radius="20dp" />
+        </shape>
+    </item>
+
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/app_chip_pressed" />
+            <stroke android:width="1dp" android:color="@color/app_chip_stroke" />
+            <corners android:radius="20dp" />
+        </shape>
+    </item>
+
+    <!-- what a headset controller produces while aiming at a chip -->
+    <item android:state_hovered="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/app_card_hovered" />
+            <stroke android:width="1dp" android:color="@color/basic_blue_highlight" />
+            <corners android:radius="20dp" />
+        </shape>
+    </item>
+
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/app_card_hovered" />
+            <stroke android:width="1dp" android:color="@color/basic_blue_highlight" />
+            <corners android:radius="20dp" />
+        </shape>
+    </item>
+
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/app_chip_background" />
+            <stroke android:width="1dp" android:color="@color/app_chip_stroke" />
+            <corners android:radius="20dp" />
+        </shape>
+    </item>
+
+</selector>

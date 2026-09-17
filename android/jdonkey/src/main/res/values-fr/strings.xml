@@ -310,4 +310,19 @@
     <string name="search_more_none">Le serveur a renvoyé tout ce qu\'il avait pour cette recherche</string>
     <string name="search_more_no_server">Aucun serveur connecté</string>
     <string name="search_no_answer">Le serveur n\'a pas répondu</string>
+
+    <!-- filtres rapides -->
+    <string name="search_filter_complete">Complet</string>
+    <string name="search_filter_half" formatted="false">50 %+ complet</string>
+    <string name="search_filter_sources">%1$d+ sources</string>
+    <string name="search_filter_sort_sources">Tri : sources</string>
+    <string name="search_filter_sort_size">Tri : taille</string>
+    <string name="search_filter_sort_name">Tri : nom</string>
+    <string name="search_filter_summary">%1$d résultats sur %2$d</string>
+    <string name="search_filter_summary_all">%1$d résultats</string>
+    <string name="search_filter_clear">Effacer</string>
+    <string name="search_filter_more">Plus de résultats</string>
+    <string name="search_filter_none_match">Aucun résultat ne correspond à ces filtres</string>
+    <string name="search_filter_none_match_hint">Relâchez-les et les résultats déjà reçus du serveur reviennent aussitôt : rien n\'est recherché de nouveau.</string>
+    <string name="search_item_complete_percent" formatted="false">%1$d %% complet</string>
 </resources>

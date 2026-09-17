@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The quick filter bar.
+
+  Everything here narrows the hits that are already on the device - no chip sends a new
+  request to the server, so a chip is instant and costs nothing, and turning one off
+  brings the results straight back. That is the whole reason the bar exists: the search
+  parameters panel above the box can express the same things, but only before the
+  search, and changing your mind there means waiting for a second round trip.
+
+  The chips scroll horizontally because the row has to survive a narrow phone in
+  portrait without wrapping into a two-line block that pushes the results off screen.
+-->
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:parentTag="android.widget.LinearLayout">
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipToPadding="false"
+        android:paddingLeft="@dimen/card_gutter"
+        android:paddingRight="@dimen/card_gutter"
+        android:paddingTop="6dp"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/view_search_filters_chip_complete"
+                style="@style/SearchFilterChip"
+                android:text="@string/search_filter_complete" />
+
+            <TextView
+                android:id="@+id/view_search_filters_chip_half"
+                style="@style/SearchFilterChip"
+                android:text="@string/search_filter_half" />
+
+            <TextView
+                android:id="@+id/view_search_filters_chip_sources_low"
+                style="@style/SearchFilterChip"
+                tools:text="10+ sources" />
+
+            <TextView
+                android:id="@+id/view_search_filters_chip_sources_high"
+                style="@style/SearchFilterChip"
+                tools:text="50+ sources" />
+
+            <TextView
+                android:id="@+id/view_search_filters_chip_sort"
+                style="@style/SearchFilterChip"
+                android:text="@string/search_filter_sort_sources" />
+
+            <!--
+              Not a filter but an action, and it sits here because this is where the
+              user is already looking when a page of hits is not enough. It used to be
+              reachable only by opening the menu of some arbitrary result, which is not
+              where anyone thinks to look for "give me more of these". Hidden unless the
+              server actually said it had held some back - asking for more when it did
+              not is answered with silence.
+            -->
+            <TextView
+                android:id="@+id/view_search_filters_chip_more"
+                style="@style/SearchFilterChip"
+                android:text="@string/search_filter_more"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+    </HorizontalScrollView>
+
+    <!-- How many of the hits survived the chips, and the one tap that undoes them. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:paddingLeft="@dimen/card_gutter"
+        android:paddingRight="@dimen/card_gutter"
+        android:paddingTop="2dp">
+
+        <TextView
+            android:id="@+id/view_search_filters_summary"
+            style="@style/SearchFilterSummary"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            tools:text="12 of 240 results" />
+
+        <TextView
+            android:id="@+id/view_search_filters_clear"
+            style="@style/SearchFilterClear"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/search_filter_clear"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</merge>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A chip's label follows its fill: secondary text off, inverted on. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="@color/app_chip_text_selected" android:state_selected="true" />
+    <item android:color="@color/app_chip_text" />
+</selector>

@@ -95,4 +95,8 @@
     <color name="app_card_pressed">#ff283a4a</color>
     <color name="app_pill_background">#ff1f3444</color>
 
+
+    <!-- A filled chip takes the lifted accent, so its label has to go dark: white on
+         #4fc3f7 is 2.0:1, near-navy on it is 8.3:1. -->
+    <color name="app_chip_text_selected">#ff0a1119</color>
 </resources>
