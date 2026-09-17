@@ -21,6 +21,7 @@ import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -65,6 +66,8 @@ public class TransfersFragment extends AbstractFragment implements TimerObserver
     private Button buttonSelectAll;
     private Button buttonSelectDownloading;
     private Button buttonSelectCompleted;
+    private View completedActions;
+    private TextView buttonClearCompleted;
     private ExpandableListView list;
     private TextView textDownloads;
     private TextView textUploads;
@@ -146,6 +149,9 @@ public class TransfersFragment extends AbstractFragment implements TimerObserver
             List<Transfer> transfers = filter(TransferManager.instance().getTransfers(), selectedStatus);
             Collections.sort(transfers, transferComparator);
             adapter.updateList(transfers);
+            // the tab filter has already been applied, so on the finished tab this list
+            // is exactly what "remove all" would remove
+            updateClearCompletedButton(transfers);
         } else if (this.getActivity() != null) {
             setupAdapter();
         }
@@ -250,6 +256,11 @@ public class TransfersFragment extends AbstractFragment implements TimerObserver
         buttonSelectCompleted = findView(v, R.id.fragment_transfers_button_select_completed);
         buttonSelectCompleted.setOnClickListener(new ButtonTabListener(this, TransferStatus.COMPLETED));
 
+        completedActions = findView(v, R.id.fragment_transfers_completed_actions);
+        completedActions.setVisibility(View.GONE);
+        buttonClearCompleted = findView(v, R.id.fragment_transfers_button_clear_completed);
+        buttonClearCompleted.setOnClickListener(new ButtonClearCompletedListener(this));
+
         list = findView(v, R.id.fragment_transfers_list);
         SwipeLayout swipe = findView(v, R.id.fragment_transfers_swipe);
         swipe.setOnSwipeListener(new SwipeLayout.OnSwipeListener() {
@@ -313,6 +324,9 @@ public class TransfersFragment extends AbstractFragment implements TimerObserver
         Collections.sort(transfers, transferComparator);
         adapter = new TransferListAdapter(TransfersFragment.this.getActivity(), transfers);
         list.setAdapter(adapter);
+        // without this the button waits for the next tick of the refresh timer to
+        // appear, on the very screen the user just opened
+        updateClearCompletedButton(transfers);
     }
 
     private List<Transfer> filter(List<Transfer> transfers, TransferStatus status) {
@@ -434,6 +448,85 @@ public class TransfersFragment extends AbstractFragment implements TimerObserver
             if (t.isDownloading()) return true;
         }
         return false;
+    }
+
+    /**
+     * Shows "remove all" on the finished tab, with the number it would remove, and
+     * nowhere else - the other tabs hold transfers that are still running, and a bulk
+     * remove there is a different and much less welcome action.
+     */
+    private void updateClearCompletedButton(List<Transfer> shownTransfers) {
+        if (completedActions == null || buttonClearCompleted == null) {
+            return;
+        }
+
+        final boolean show = selectedStatus == TransferStatus.COMPLETED
+                && shownTransfers != null
+                && !shownTransfers.isEmpty();
+
+        completedActions.setVisibility(show ? View.VISIBLE : View.GONE);
+
+        if (show) {
+            buttonClearCompleted.setText(getString(R.string.transfers_clear_completed, shownTransfers.size()));
+        }
+    }
+
+    /**
+     * Takes every finished transfer off the list, keeping the files.
+     * <p>
+     * Deliberately not offered with a "delete the files too" option: this is the one
+     * button that acts on many transfers at once, and the thing people want from it is
+     * a tidy list, not a bulk delete they cannot undo. Removing a download along with
+     * its file is still one transfer at a time, from the row's own menu, where the file
+     * being deleted is named.
+     */
+    private void clearCompletedTransfers() {
+        final Activity activity = getActivity();
+        if (activity == null) {
+            return;
+        }
+
+        final List<Transfer> completed = new ArrayList<>();
+        for (Transfer t : TransferManager.instance().getTransfers()) {
+            if (t != null && t.isComplete()) {
+                completed.add(t);
+            }
+        }
+
+        if (completed.isEmpty()) {
+            return;
+        }
+
+        UIUtils.showYesNoDialog(activity
+                , getString(R.string.transfers_clear_completed_question, completed.size())
+                , R.string.transfers_clear_completed_title
+                , new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                        removeTransfers(completed);
+                    }
+                });
+    }
+
+    private void removeTransfers(final List<Transfer> transfers) {
+        // Removal goes through the session, the same way the single-transfer path does,
+        // and the same way it stays off the UI thread. The list catches up on the next
+        // tick of the refresh timer.
+        Engine.instance().getThreadPool().execute(new Thread("Remove finished transfers") {
+            @Override
+            public void run() {
+                for (Transfer t : transfers) {
+                    try {
+                        t.remove(false);
+                    } catch (Throwable e) {
+                        LOG.warn("unable to remove transfer {}", t.getDisplayName(), e);
+                    }
+                }
+            }
+        });
+
+        UIUtils.showLongMessage(getActivity(), getString(R.string.transfers_clear_completed_done, transfers.size()));
     }
 
     private void startTransferFromURL() {
@@ -657,6 +750,18 @@ public class TransfersFragment extends AbstractFragment implements TimerObserver
         public void onClick(TransfersFragment f, View v) {
             f.selectedStatus = status;
             f.onTime();
+        }
+    }
+
+    private static final class ButtonClearCompletedListener extends ClickAdapter<TransfersFragment> {
+
+        ButtonClearCompletedListener(TransfersFragment f) {
+            super(f);
+        }
+
+        @Override
+        public void onClick(TransfersFragment f, View v) {
+            f.clearCompletedTransfers();
         }
     }
 

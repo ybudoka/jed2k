@@ -325,4 +325,10 @@
     <string name="search_filter_none_match">Aucun résultat ne correspond à ces filtres</string>
     <string name="search_filter_none_match_hint">Relâchez-les et les résultats déjà reçus du serveur reviennent aussitôt : rien n\'est recherché de nouveau.</string>
     <string name="search_item_complete_percent" formatted="false">%1$d %% complet</string>
+
+    <!-- retrait en bloc des transferts terminés -->
+    <string name="transfers_clear_completed">Tout retirer (%1$d)</string>
+    <string name="transfers_clear_completed_title">Retirer les transferts terminés</string>
+    <string name="transfers_clear_completed_question">Retirer de cette liste les %1$d transferts terminés ? Les fichiers téléchargés restent sur votre appareil.</string>
+    <string name="transfers_clear_completed_done">%1$d transferts terminés retirés de la liste</string>
 </resources>

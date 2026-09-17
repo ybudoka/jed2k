@@ -129,6 +129,27 @@ public final class UIUtils {
         });
     }
 
+    /**
+     * Same as the resource-id form, for a message that has to carry a number the caller
+     * worked out. The icon-taking overload below is not a substitute: it puts an icon in
+     * the dialog.
+     */
+    public static Dialog showYesNoDialog(Context context, String message, int titleId, OnClickListener positiveListener) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setMessage(message)
+                .setTitle(titleId)
+                .setCancelable(false)
+                .setPositiveButton(android.R.string.yes, positiveListener)
+                .setNegativeButton(android.R.string.no, new OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                });
+        Dialog dialog = builder.create();
+        dialog.show();
+        return dialog;
+    }
+
     public static void showYesNoDialog(Context context, int iconId, String message, int titleId, OnClickListener positiveListener) {
         showYesNoDialog(context, iconId, message, titleId, positiveListener, new OnClickListener() {
             public void onClick(DialogInterface dialog, int which) {

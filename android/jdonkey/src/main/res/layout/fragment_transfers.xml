@@ -79,6 +79,34 @@
                 android:textSize="12sp"/>
     </RadioGroup>
 
+    <!--
+      Bulk action for the finished tab. It lives outside the list rather than inside the
+      menu behind the header, because emptying a list of finished downloads is what
+      people come to that tab to do, and a per-item menu makes it a chore of one tap per
+      row. Shown only on that tab, and only while there is something on it.
+    -->
+    <LinearLayout
+            android:id="@+id/fragment_transfers_completed_actions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/app_page_background"
+            android:gravity="end|center_vertical"
+            android:orientation="horizontal"
+            android:paddingBottom="6dp"
+            android:paddingLeft="@dimen/card_gutter"
+            android:paddingRight="@dimen/card_gutter"
+            android:paddingTop="6dp"
+            android:visibility="gone">
+
+        <TextView
+                android:id="@+id/fragment_transfers_button_clear_completed"
+                style="@style/BulkActionButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                tools:text="Remove all (3)"/>
+
+    </LinearLayout>
+
     <org.dkf.jmule.views.RichNotification
             android:id="@+id/fragment_transfers_sd_card_notification"
             frostwire:rich_notification_icon="@drawable/sd_card_notification"

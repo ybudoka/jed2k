@@ -352,4 +352,10 @@
     <string name="search_filter_none_match">No result matches these filters</string>
     <string name="search_filter_none_match_hint">Loosen them and the hits already downloaded from the server come straight back - nothing is searched again.</string>
     <string name="search_item_complete_percent" formatted="false">%1$d%% complete</string>
+
+    <!-- bulk removal of finished transfers -->
+    <string name="transfers_clear_completed">Remove all (%1$d)</string>
+    <string name="transfers_clear_completed_title">Remove finished transfers</string>
+    <string name="transfers_clear_completed_question">Remove all %1$d finished transfers from this list? The files they downloaded stay on your device.</string>
+    <string name="transfers_clear_completed_done">%1$d finished transfers removed from the list</string>
 </resources>
